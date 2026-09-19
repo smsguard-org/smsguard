@@ -1,3 +1,41 @@
 <resources>
-    <string name="app_name">smsguard</string>
+    <string name="app_name">SMSGuard</string>
+    <string name="app_subtitle">Offline SMS anti-theft and location trigger</string>
+
+    <string name="section_commands">SMS commands</string>
+    <string name="cmd_locate">#LOCATE#PIN</string>
+    <string name="cmd_locate_desc">Auto-replies with your GPS coordinates and a Google Maps link.</string>
+    <string name="cmd_alarm">#ALARM#PIN</string>
+    <string name="cmd_alarm_desc">Forces a max-volume siren, even in silent or Do Not Disturb.</string>
+    <string name="cmd_stop">#STOP#PIN</string>
+    <string name="cmd_stop_desc">Stops a running siren.</string>
+    <string name="cmd_note">Commands work offline over SMS and match against the PIN you set below.</string>
+
+    <string name="section_protection">Protection settings</string>
+    <string name="enable_sms_commands">Enable SMS commands</string>
+    <string name="sms_commands_enabled">Commands enabled</string>
+    <string name="sms_commands_disabled">Commands disabled</string>
+    <string name="pin_label">Security PIN</string>
+    <string name="pin_hint">4–8 digits</string>
+
+    <string name="section_battery">Low-battery beacon</string>
+    <string name="enable_battery_beacon">Send location beacon when battery is low</string>
+    <string name="battery_beacon_enabled">Beacon enabled</string>
+    <string name="battery_beacon_disabled">Beacon disabled</string>
+    <string name="trusted_contact_label">Trusted contact number</string>
+    <string name="battery_threshold_label">Trigger at battery level</string>
+    <string name="battery_threshold_value">%1$d%%</string>
+
+    <string name="section_setup">Permissions and setup</string>
+    <string name="permissions_missing">Grant permissions so SMSGuard can receive commands, read SMS, send replies and access location.</string>
+    <string name="permissions_granted">All permissions granted</string>
+    <string name="grant_permissions">Grant permissions</string>
+    <string name="default_sms_note">SMSGuard must be your default SMS app to see incoming commands. Choose it as default below; the system will route your SMS through SMSGuard.</string>
+    <string name="set_default_sms">Set as default SMS app</string>
+    <string name="default_sms_set">SMSGuard is the default SMS app</string>
+    <string name="default_sms_not_set">Not the default SMS app</string>
+
+    <string name="siren_channel">SMSGuard siren</string>
+    <string name="siren_notification">Alarm triggered</string>
+    <string name="siren_stop">Stop siren</string>
 </resources>
