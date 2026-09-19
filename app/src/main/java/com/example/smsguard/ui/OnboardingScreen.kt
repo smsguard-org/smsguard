@@ -298,30 +298,6 @@ private fun WelcomeStep() {
             )
         }
     }
-    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-    Text(
-        text = stringResource(R.string.onboarding_how_it_works),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary
-    )
-    FeatureCard(
-        command = stringResource(R.string.cmd_locate),
-        description = stringResource(R.string.onboarding_feature_locate_desc)
-    )
-    FeatureCard(
-        command = stringResource(R.string.cmd_alarm),
-        description = stringResource(R.string.onboarding_feature_alarm_desc)
-    )
-    FeatureCard(
-        command = stringResource(R.string.cmd_stop),
-        description = stringResource(R.string.onboarding_feature_stop_desc)
-    )
-    FeatureCard(
-        command = stringResource(R.string.onboarding_feature_beacon),
-        description = stringResource(R.string.onboarding_feature_beacon_desc)
-    )
 }
 
 @Composable
