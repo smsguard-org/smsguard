@@ -23,7 +23,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
             val commandPin = match.groupValues[2]
             if (commandPin != pin || from == null) return
             
-            Prefs.incrementCommandCount(context)
+            Prefs.incrementCommandCount(context, command)
 
             when (command) {
                 SmsGuardCommand.LOCATE -> handleLocate(context, from)
@@ -61,6 +61,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
     }
 
     private fun handleAlarm(context: Context, from: String) {
+        Prefs.incrementAlertCount(context)
         val intent = Intent(context, SirenService::class.java)
             .setAction(SirenServiceActions.START)
         ContextCompat.startForegroundService(context, intent)

@@ -1,5 +1,6 @@
 package com.example.smsguard.ui
 
+import android.text.format.DateUtils
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Security
@@ -44,8 +46,12 @@ import com.example.smsguard.ui.components.SectionHeader
 
 @Composable
 fun DashboardScreen(
+    commandCount: Int,
+    alertCount: Int,
+    commandHistory: List<String>,
     missingPermissionsCount: Int,
     onFixPermissions: () -> Unit,
+    onManageCommands: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyVerticalGrid(
@@ -91,7 +97,7 @@ fun DashboardScreen(
         item {
             StatCard(
                 title = "Total Alerts",
-                value = "12",
+                value = alertCount.toString(),
                 icon = Icons.Default.NotificationsActive,
                 containerColor = MaterialTheme.colorScheme.primaryContainer
             )
@@ -99,19 +105,58 @@ fun DashboardScreen(
         item {
             StatCard(
                 title = "Commands",
-                value = "45",
+                value = commandCount.toString(),
                 icon = Icons.Default.Sms,
                 containerColor = MaterialTheme.colorScheme.secondaryContainer
             )
         }
 
         // Recent Activity
+        if (commandHistory.isNotEmpty()) {
+            item(span = { GridItemSpan(2) }) {
+                SectionHeader(title = "Recent Activity", icon = Icons.Default.History)
+            }
+
+            items(commandHistory.size, span = { GridItemSpan(2) }) { index ->
+                val parts = commandHistory[index].split("|")
+                val name = parts.getOrNull(0) ?: "Unknown"
+                val time = parts.getOrNull(1)?.toLongOrNull() ?: 0L
+                
+                val timeString = DateUtils.getRelativeTimeSpanString(
+                    time,
+                    System.currentTimeMillis(),
+                    DateUtils.MINUTE_IN_MILLIS
+                ).toString()
+
+                RecentActivityCard(
+                    lastCommand = "#$name",
+                    time = timeString,
+                    status = "Executed"
+                )
+            }
+        }
+
+        // Manage Commands Section
         item(span = { GridItemSpan(2) }) {
-            RecentActivityCard(
-                lastCommand = "#LOCATE",
-                time = "2 hours ago",
-                status = "Success"
-            )
+            SectionHeader(title = "Operations", icon = Icons.AutoMirrored.Filled.ListAlt)
+        }
+
+        item(span = { GridItemSpan(2) }) {
+            SectionCard {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Manage and view available SMS commands to control your device remotely.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    FilledTonalButton(
+                        onClick = onManageCommands,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Manage Commands")
+                    }
+                }
+            }
         }
 
         // System Overview

@@ -14,7 +14,10 @@ object Prefs {
     private const val KEY_BATTERY_THRESHOLD = "battery_threshold"
     private const val KEY_BEACON_SENT_LEVEL = "beacon_sent_level"
     private const val KEY_COMMAND_COUNT = "command_count"
+    private const val KEY_ALERT_COUNT = "alert_count"
     private const val KEY_LAST_COMMAND_TIME = "last_command_time"
+    private const val KEY_LAST_COMMAND_NAME = "last_command_name"
+    private const val KEY_COMMAND_HISTORY = "command_history"
 
     const val DEFAULT_PIN = "1234"
     const val DEFAULT_BATTERY_THRESHOLD = 5
@@ -69,15 +72,40 @@ object Prefs {
 
     fun commandCount(context: Context): Int = sp(context).getInt(KEY_COMMAND_COUNT, 0)
 
-    fun incrementCommandCount(context: Context) {
+    fun alertCount(context: Context): Int = sp(context).getInt(KEY_ALERT_COUNT, 0)
+
+    fun incrementCommandCount(context: Context, commandName: String) {
         val current = commandCount(context)
-        sp(context).edit().putInt(KEY_COMMAND_COUNT, current + 1).apply()
-        setLastCommandTime(context, System.currentTimeMillis())
+        val time = System.currentTimeMillis()
+        sp(context).edit()
+            .putInt(KEY_COMMAND_COUNT, current + 1)
+            .putLong(KEY_LAST_COMMAND_TIME, time)
+            .putString(KEY_LAST_COMMAND_NAME, commandName)
+            .apply()
+        
+        addToHistory(context, "$commandName|$time")
+    }
+
+    private fun addToHistory(context: Context, entry: String) {
+        val history = commandHistory(context).toMutableList()
+        history.add(0, entry)
+        val limited = history.take(5)
+        sp(context).edit().putStringSet(KEY_COMMAND_HISTORY, limited.toSet()).apply()
+        // Note: StringSets don't guarantee order, so we might need a different approach for true history.
+        // But for dummy/simple history it might suffice if we parse the time.
+    }
+
+    fun commandHistory(context: Context): List<String> {
+        val set = sp(context).getStringSet(KEY_COMMAND_HISTORY, emptySet()) ?: emptySet()
+        return set.toList().sortedByDescending { it.split("|").lastOrNull()?.toLongOrNull() ?: 0L }
+    }
+
+    fun incrementAlertCount(context: Context) {
+        val current = alertCount(context)
+        sp(context).edit().putInt(KEY_ALERT_COUNT, current + 1).apply()
     }
 
     fun lastCommandTime(context: Context): Long = sp(context).getLong(KEY_LAST_COMMAND_TIME, 0L)
 
-    private fun setLastCommandTime(context: Context, time: Long) {
-        sp(context).edit().putLong(KEY_LAST_COMMAND_TIME, time).apply()
-    }
+    fun lastCommandName(context: Context): String = sp(context).getString(KEY_LAST_COMMAND_NAME, "None") ?: "None"
 }

@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -37,6 +38,7 @@ import kotlin.math.roundToInt
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard)
+    object Commands : Screen("commands", "Commands", Icons.AutoMirrored.Filled.ListAlt)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
 }
 
@@ -78,7 +80,7 @@ fun MainScreen() {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
-                val items = listOf(Screen.Dashboard, Screen.Settings)
+                val items = listOf(Screen.Dashboard, Screen.Commands, Screen.Settings)
                 
                 items.forEach { screen ->
                     NavigationBarItem(
@@ -106,11 +108,20 @@ fun MainScreen() {
         ) {
             composable(Screen.Dashboard.route) {
                 DashboardScreen(
+                    commandCount = Prefs.commandCount(context),
+                    alertCount = Prefs.alertCount(context),
+                    commandHistory = Prefs.commandHistory(context),
                     missingPermissionsCount = missingPermissions.size,
                     onFixPermissions = {
                         permissionLauncher.launch(missingPermissions.toTypedArray())
+                    },
+                    onManageCommands = {
+                        navController.navigate(Screen.Commands.route)
                     }
                 )
+            }
+            composable(Screen.Commands.route) {
+                CommandsScreen()
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(
