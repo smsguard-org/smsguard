@@ -5,18 +5,16 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.PI
+import kotlin.math.exp
 import kotlin.math.sin
 
 object SirenSound {
     private const val SAMPLE_RATE = 22050
-    private const val TONE_A = 660.0
-    private const val TONE_B = 880.0
-    private const val SWAP_EVERY = 0.6
-    private const val DURATION_SEC = 12
-    private const val FADE_SEC = 0.05
+    private const val DURATION_SEC = 2
+    private const val FREQUENCY = 1000.0
 
     fun file(context: Context): File {
-        val target = File(context.cacheDir, "siren.wav")
+        val target = File(context.cacheDir, "ding.wav")
         if (target.exists() && target.length() > 44L) return target
         generate(target)
         return target
@@ -24,15 +22,13 @@ object SirenSound {
 
     private fun generate(target: File) {
         val totalSamples = (SAMPLE_RATE * DURATION_SEC).toInt()
-        val fadeSamples = (SAMPLE_RATE * FADE_SEC).toInt()
         val dataSize = totalSamples * 2
         val sample = ByteArray(dataSize)
         for (i in 0 until totalSamples) {
             val t = i.toDouble() / SAMPLE_RATE
-            val freq = if (((t / SWAP_EVERY).toInt()) % 2 == 0) TONE_A else TONE_B
-            var value = (sin(2.0 * PI * freq * t) * 0.9 * Short.MAX_VALUE).toInt()
-            val fade = fadeInFadeOut(i, totalSamples, fadeSamples)
-            value = (value * fade).toInt()
+            // Simple ding: high pitch with exponential decay
+            val decay = exp(-3.0 * t)
+            val value = (sin(2.0 * PI * FREQUENCY * t) * decay * 0.9 * Short.MAX_VALUE).toInt()
             val le = (value and 0xFFFF)
             sample[i * 2] = (le).toByte()
             sample[i * 2 + 1] = (le shr 8).toByte()
@@ -54,13 +50,6 @@ object SirenSound {
             out.write(int32(dataSize))
             out.write(sample)
         }
-    }
-
-    private fun fadeInFadeOut(i: Int, total: Int, fade: Int): Double {
-        if (fade <= 0) return 1.0
-        val gain = if (i < fade) i.toDouble() / fade else 1.0
-        val tail = if (i > total - fade) (total - i).toDouble() / fade else 1.0
-        return gain.coerceIn(0.0, 1.0) * tail.coerceIn(0.0, 1.0)
     }
 
     private fun int16(value: Int): ByteArray = byteArrayOf(

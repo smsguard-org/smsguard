@@ -70,6 +70,6 @@ class SmsCommandReceiver : BroadcastReceiver() {
     }
 
     private companion object {
-        val COMMAND_PATTERN = Regex("""#([A-Z]+)#(\d{4,8})""")
+        val COMMAND_PATTERN = Regex("""#([A-Z]+)#(\d{4,8})#?""")
     }
 }
