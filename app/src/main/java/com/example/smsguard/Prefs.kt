@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 object Prefs {
     private const val NAME = "smsguard_prefs"
 
+    private const val KEY_ONBOARDED = "onboarded"
     private const val KEY_SMS_ENABLED = "sms_enabled"
     private const val KEY_PIN = "pin"
     private const val KEY_TRUSTED_CONTACT = "trusted_contact"
@@ -23,6 +24,12 @@ object Prefs {
 
     fun setSmsEnabled(context: Context, enabled: Boolean) {
         sp(context).edit().putBoolean(KEY_SMS_ENABLED, enabled).apply()
+    }
+
+    fun onboarded(context: Context): Boolean = sp(context).getBoolean(KEY_ONBOARDED, false)
+
+    fun setOnboarded(context: Context, value: Boolean) {
+        sp(context).edit().putBoolean(KEY_ONBOARDED, value).apply()
     }
 
     fun pin(context: Context): String = sp(context).getString(KEY_PIN, DEFAULT_PIN) ?: DEFAULT_PIN
