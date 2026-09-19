@@ -26,14 +26,10 @@
     <string name="battery_threshold_label">Trigger at battery level</string>
     <string name="battery_threshold_value">%1$d%%</string>
 
-    <string name="section_setup">Permissions and setup</string>
+    <string name="section_permissions">Permissions</string>
     <string name="permissions_missing">Grant permissions so SMSGuard can receive commands, read SMS, send replies and access location.</string>
     <string name="permissions_granted">All permissions granted</string>
     <string name="grant_permissions">Grant permissions</string>
-    <string name="default_sms_note">SMSGuard must be your default SMS app to see incoming commands. Choose it as default below; the system will route your SMS through SMSGuard.</string>
-    <string name="set_default_sms">Set as default SMS app</string>
-    <string name="default_sms_set">SMSGuard is the default SMS app</string>
-    <string name="default_sms_not_set">Not the default SMS app</string>
 
     <string name="siren_channel">SMSGuard siren</string>
     <string name="siren_notification">Alarm triggered</string>

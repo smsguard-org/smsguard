@@ -1,12 +1,8 @@
 package com.example.smsguard
 
 import android.Manifest
-import android.app.role.RoleManager
-import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
-import android.provider.Telephony
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -86,20 +82,12 @@ private fun SmsGuardApp() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissionTrigger++ }
 
-    val defaultSmsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { permissionTrigger++ }
-
     val missingPermissions by remember(permissionTrigger) {
         mutableStateOf(
             REQUIRED_PERMISSIONS.filter {
                 ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
             }
         )
-    }
-
-    val isDefaultSms by remember(permissionTrigger) {
-        mutableStateOf(isDefaultSmsApp(context))
     }
 
     Scaffold { innerPadding ->
@@ -234,7 +222,7 @@ private fun SmsGuardApp() {
                 )
             }
 
-            SectionCard(title = stringResource(R.string.section_setup)) {
+            SectionCard(title = stringResource(R.string.section_permissions)) {
                 if (missingPermissions.isEmpty()) {
                     Text(
                         text = stringResource(R.string.permissions_granted),
@@ -249,30 +237,6 @@ private fun SmsGuardApp() {
                         Text(stringResource(R.string.grant_permissions))
                     }
                 }
-                Spacer(Modifier.height(16.dp))
-                HorizontalDivider()
-                Spacer(Modifier.height(16.dp))
-                Text(stringResource(R.string.default_sms_note))
-                Spacer(Modifier.height(10.dp))
-                if (isDefaultSms) {
-                    Text(
-                        text = stringResource(R.string.default_sms_set),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    Text(
-                        text = stringResource(R.string.default_sms_not_set),
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    FilledTonalButton(
-                        onClick = { requestDefaultSmsRole(context, defaultSmsLauncher) },
-                        enabled = missingPermissions.isEmpty()
-                    ) {
-                        Text(stringResource(R.string.set_default_sms))
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
             }
         }
     }
@@ -337,21 +301,4 @@ private fun SwitchRow(
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
-}
-
-private fun isDefaultSmsApp(context: Context): Boolean {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        val roleManager = context.getSystemService(RoleManager::class.java) ?: return false
-        return roleManager.isRoleHeld(RoleManager.ROLE_SMS)
-    }
-    return runCatching {
-        Telephony.Sms.getDefaultSmsPackage(context) == context.packageName
-    }.getOrDefault(false)
-}
-
-private fun requestDefaultSmsRole(context: Context, launcher: androidx.activity.result.ActivityResultLauncher<android.content.Intent>) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
-    val roleManager = context.getSystemService(RoleManager::class.java) ?: return
-    if (!roleManager.isRoleAvailable(RoleManager.ROLE_SMS)) return
-    launcher.launch(roleManager.createRequestRoleIntent(RoleManager.ROLE_SMS))
 }
