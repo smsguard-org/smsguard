@@ -57,6 +57,7 @@ fun MainScreen() {
     var permissionTrigger by remember { mutableIntStateOf(0) }
     
     // Shared state for settings
+    var serviceEnabled by remember { mutableStateOf(Prefs.serviceEnabled(context)) }
     var smsEnabled by remember { mutableStateOf(Prefs.smsEnabled(context)) }
     var pin by remember { mutableStateOf(Prefs.pin(context)) }
     var beaconEnabled by remember { mutableStateOf(Prefs.batteryBeaconEnabled(context)) }
@@ -108,6 +109,12 @@ fun MainScreen() {
         ) {
             composable(Screen.Dashboard.route) {
                 DashboardScreen(
+                    serviceEnabled = serviceEnabled,
+                    onServiceToggle = {
+                        serviceEnabled = it
+                        Prefs.setServiceEnabled(context, it)
+                    },
+                    serviceStartTime = Prefs.serviceStartTime(context),
                     commandCount = Prefs.commandCount(context),
                     alertCount = Prefs.alertCount(context),
                     commandHistory = Prefs.commandHistory(context),

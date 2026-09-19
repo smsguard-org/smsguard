@@ -11,6 +11,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
+        if (!Prefs.serviceEnabled(context)) return
         if (!Prefs.smsEnabled(context)) return
 
         val pin = Prefs.pin(context)

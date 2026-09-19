@@ -18,6 +18,8 @@ object Prefs {
     private const val KEY_LAST_COMMAND_TIME = "last_command_time"
     private const val KEY_LAST_COMMAND_NAME = "last_command_name"
     private const val KEY_COMMAND_HISTORY = "command_history"
+    private const val KEY_SERVICE_ENABLED = "service_enabled"
+    private const val KEY_SERVICE_START_TIME = "service_start_time"
 
     const val DEFAULT_PIN = "1234"
     const val DEFAULT_BATTERY_THRESHOLD = 5
@@ -108,4 +110,21 @@ object Prefs {
     fun lastCommandTime(context: Context): Long = sp(context).getLong(KEY_LAST_COMMAND_TIME, 0L)
 
     fun lastCommandName(context: Context): String = sp(context).getString(KEY_LAST_COMMAND_NAME, "None") ?: "None"
+
+    fun serviceEnabled(context: Context): Boolean = sp(context).getBoolean(KEY_SERVICE_ENABLED, true)
+
+    fun setServiceEnabled(context: Context, enabled: Boolean) {
+        val current = serviceEnabled(context)
+        if (current == enabled) return
+        
+        val editor = sp(context).edit().putBoolean(KEY_SERVICE_ENABLED, enabled)
+        if (enabled) {
+            editor.putLong(KEY_SERVICE_START_TIME, System.currentTimeMillis())
+        } else {
+            editor.putLong(KEY_SERVICE_START_TIME, 0L)
+        }
+        editor.apply()
+    }
+
+    fun serviceStartTime(context: Context): Long = sp(context).getLong(KEY_SERVICE_START_TIME, 0L)
 }

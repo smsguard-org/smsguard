@@ -3,6 +3,7 @@ package com.example.smsguard.ui
 import android.text.format.DateUtils
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,13 +28,23 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -43,9 +54,13 @@ import androidx.compose.ui.unit.dp
 import com.example.smsguard.R
 import com.example.smsguard.ui.components.SectionCard
 import com.example.smsguard.ui.components.SectionHeader
+import kotlinx.coroutines.delay
 
 @Composable
 fun DashboardScreen(
+    serviceEnabled: Boolean,
+    onServiceToggle: (Boolean) -> Unit,
+    serviceStartTime: Long,
     commandCount: Int,
     alertCount: Int,
     commandHistory: List<String>,
@@ -91,6 +106,15 @@ fun DashboardScreen(
                     )
                 }
             }
+        }
+
+        // Main Service Toggle
+        item(span = { GridItemSpan(2) }) {
+            ServiceStatusCard(
+                enabled = serviceEnabled,
+                onToggle = onServiceToggle,
+                startTime = serviceStartTime
+            )
         }
 
         // Summary Stats
@@ -159,21 +183,6 @@ fun DashboardScreen(
             }
         }
 
-        // System Overview
-        item(span = { GridItemSpan(2) }) {
-            SectionHeader(title = "Security Overview", icon = Icons.Default.Security)
-        }
-
-        item(span = { GridItemSpan(2) }) {
-            SectionCard {
-                Text(
-                    text = "SMS Commands are active and protected by your secure PIN. The battery beacon is monitoring and will alert your trusted contact if needed.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
         // Permissions Status
         item(span = { GridItemSpan(2) }) {
             SectionCard(
@@ -209,6 +218,77 @@ fun DashboardScreen(
 
         item(span = { GridItemSpan(2) }) {
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun ServiceStatusCard(
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+    startTime: Long
+) {
+    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(enabled) {
+        if (enabled) {
+            while (true) {
+                currentTime = System.currentTimeMillis()
+                delay(1000)
+            }
+        }
+    }
+
+    val runningTime = if (enabled && startTime > 0) {
+        val seconds = (currentTime - startTime) / 1000
+        val h = seconds / 3600
+        val m = (seconds % 3600) / 60
+        val s = seconds % 60
+        if (h > 0) "%02d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
+    } else {
+        "00:00"
+    }
+
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer 
+                             else MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(24.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (enabled) "Protection Active" else "Protection Paused",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer 
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = if (enabled) "Running for $runningTime • Detecting messages" 
+                           else "Tap to enable background detection",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) 
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                )
+            }
+            Switch(
+                checked = enabled,
+                onCheckedChange = onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                ),
+                modifier = Modifier.scale(1.5f).padding(end = 12.dp)
+            )
         }
     }
 }
