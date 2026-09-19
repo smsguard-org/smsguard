@@ -13,6 +13,8 @@ object Prefs {
     private const val KEY_BEACON_ENABLED = "beacon_enabled"
     private const val KEY_BATTERY_THRESHOLD = "battery_threshold"
     private const val KEY_BEACON_SENT_LEVEL = "beacon_sent_level"
+    private const val KEY_COMMAND_COUNT = "command_count"
+    private const val KEY_LAST_COMMAND_TIME = "last_command_time"
 
     const val DEFAULT_PIN = "1234"
     const val DEFAULT_BATTERY_THRESHOLD = 5
@@ -63,5 +65,19 @@ object Prefs {
 
     fun setBeaconSentLevel(context: Context, level: Int) {
         sp(context).edit().putInt(KEY_BEACON_SENT_LEVEL, level).apply()
+    }
+
+    fun commandCount(context: Context): Int = sp(context).getInt(KEY_COMMAND_COUNT, 0)
+
+    fun incrementCommandCount(context: Context) {
+        val current = commandCount(context)
+        sp(context).edit().putInt(KEY_COMMAND_COUNT, current + 1).apply()
+        setLastCommandTime(context, System.currentTimeMillis())
+    }
+
+    fun lastCommandTime(context: Context): Long = sp(context).getLong(KEY_LAST_COMMAND_TIME, 0L)
+
+    private fun setLastCommandTime(context: Context, time: Long) {
+        sp(context).edit().putLong(KEY_LAST_COMMAND_TIME, time).apply()
     }
 }
