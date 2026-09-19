@@ -22,6 +22,9 @@ class SmsCommandReceiver : BroadcastReceiver() {
             val command = match.groupValues[1]
             val commandPin = match.groupValues[2]
             if (commandPin != pin || from == null) return
+            
+            Prefs.incrementCommandCount(context)
+
             when (command) {
                 SmsGuardCommand.LOCATE -> handleLocate(context, from)
                 SmsGuardCommand.ALARM -> handleAlarm(context, from)
@@ -42,15 +45,15 @@ class SmsCommandReceiver : BroadcastReceiver() {
         val pendingResult = goAsync()
         LocationHelper.requestFreshFix(context) { location ->
             val reply = if (location != null) {
-                val text = String.format(
-                    Locale.US, "SMSGuard location: %.4f, %.4f (accuracy %dm)\n%s",
-                    location.latitude, location.longitude,
-                    location.accuracy.toInt(),
+                String.format(
+                    Locale.US,
+                    "SMSGuard Location:\nLat: %.6f\nLong: %.6f\nMaps: %s",
+                    location.latitude,
+                    location.longitude,
                     LocationHelper.mapsLink(location.latitude, location.longitude)
                 )
-                text
             } else {
-                "SMSGuard: Location unavailable. Turn on location and try again."
+                "SMSGuard: Unable to fetch fresh GPS fix. Ensure location is enabled."
             }
             SmsSender.send(context, from, reply)
             pendingResult.finish()
