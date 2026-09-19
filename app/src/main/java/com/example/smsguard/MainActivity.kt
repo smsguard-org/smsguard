@@ -26,6 +26,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.example.smsguard.ui.OnboardingScreen
 import com.example.smsguard.ui.theme.SmsguardTheme
 import kotlin.math.roundToInt
 
@@ -54,7 +56,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SmsguardTheme {
-                SmsGuardApp()
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    SmsGuardApp()
+                }
             }
         }
     }
@@ -71,6 +78,14 @@ private val REQUIRED_PERMISSIONS = listOf(
 private fun SmsGuardApp() {
     val context = LocalContext.current
     var permissionTrigger by remember { mutableIntStateOf(0) }
+    var onboarded by remember { mutableStateOf(Prefs.onboarded(context)) }
+
+    if (!onboarded) {
+        OnboardingScreen(
+            onComplete = { onboarded = true }
+        )
+        return
+    }
 
     var smsEnabled by remember { mutableStateOf(Prefs.smsEnabled(context)) }
     var pin by remember { mutableStateOf(Prefs.pin(context)) }
@@ -250,8 +265,8 @@ private fun SectionCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
