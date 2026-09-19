@@ -259,7 +259,7 @@ private fun ServiceStatusCard(
     ) {
         Row(
             modifier = Modifier
-                .padding(24.dp)
+                .padding(16.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
@@ -267,15 +267,15 @@ private fun ServiceStatusCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = if (enabled) "Protection Active" else "Protection Paused",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer 
                             else MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = if (enabled) "Running for $runningTime • Detecting messages" 
-                           else "Tap to enable background detection",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = if (enabled) "Online for $runningTime" 
+                           else "System is offline",
+                    style = MaterialTheme.typography.bodySmall,
                     color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) 
                             else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
@@ -287,7 +287,7 @@ private fun ServiceStatusCard(
                     checkedThumbColor = MaterialTheme.colorScheme.primary,
                     checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                 ),
-                modifier = Modifier.scale(1.5f).padding(end = 12.dp)
+                modifier = Modifier.padding(start = 8.dp)
             )
         }
     }
