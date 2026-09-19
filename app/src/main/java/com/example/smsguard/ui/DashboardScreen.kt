@@ -50,6 +50,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.smsguard.R
 import com.example.smsguard.ui.components.SectionCard
@@ -120,7 +121,7 @@ fun DashboardScreen(
         // Summary Stats
         item {
             StatCard(
-                title = "Total Alerts",
+                title = "Alerts Fired",
                 value = alertCount.toString(),
                 icon = Icons.Default.NotificationsActive,
                 containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -128,7 +129,7 @@ fun DashboardScreen(
         }
         item {
             StatCard(
-                title = "Commands",
+                title = "Cmds Received",
                 value = commandCount.toString(),
                 icon = Icons.Default.Sms,
                 containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -136,11 +137,11 @@ fun DashboardScreen(
         }
 
         // Recent Activity
-        if (commandHistory.isNotEmpty()) {
-            item(span = { GridItemSpan(2) }) {
-                SectionHeader(title = "Recent Activity", icon = Icons.Default.History)
-            }
+        item(span = { GridItemSpan(2) }) {
+            SectionHeader(title = "Recent Activity", icon = Icons.Default.History)
+        }
 
+        if (commandHistory.isNotEmpty()) {
             items(commandHistory.size, span = { GridItemSpan(2) }) { index ->
                 val parts = commandHistory[index].split("|")
                 val name = parts.getOrNull(0) ?: "Unknown"
@@ -157,6 +158,28 @@ fun DashboardScreen(
                     time = timeString,
                     status = "Executed"
                 )
+            }
+        } else {
+            item(span = { GridItemSpan(2) }) {
+                SectionCard(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "No activity yet",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Send a command like #LOCATE#PIN to see it here.",
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
 
