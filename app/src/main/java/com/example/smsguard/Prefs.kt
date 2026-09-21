@@ -112,7 +112,7 @@ object Prefs {
 
     fun lastCommandName(context: Context): String = sp(context).getString(KEY_LAST_COMMAND_NAME, "None") ?: "None"
 
-    fun serviceEnabled(context: Context): Boolean = sp(context).getBoolean(KEY_SERVICE_ENABLED, true)
+    fun serviceEnabled(context: Context): Boolean = sp(context).getBoolean(KEY_SERVICE_ENABLED, false)
 
     fun setServiceEnabled(context: Context, enabled: Boolean) {
         val current = serviceEnabled(context)
