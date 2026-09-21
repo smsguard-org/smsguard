@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -23,12 +24,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SmsguardTheme {
+            val context = LocalContext.current
+            var themeMode by remember { mutableIntStateOf(Prefs.themeMode(context)) }
+            
+            SmsguardTheme(themeMode = themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    SmsGuardApp()
+                    SmsGuardApp(onThemeChange = { themeMode = it })
                 }
             }
         }
@@ -36,7 +40,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun SmsGuardApp() {
+private fun SmsGuardApp(onThemeChange: (Int) -> Unit) {
     val context = LocalContext.current
     var onboarded by remember { mutableStateOf(Prefs.onboarded(context)) }
 
@@ -45,6 +49,6 @@ private fun SmsGuardApp() {
             onComplete = { onboarded = true }
         )
     } else {
-        MainScreen()
+        MainScreen(onThemeChange = onThemeChange)
     }
 }

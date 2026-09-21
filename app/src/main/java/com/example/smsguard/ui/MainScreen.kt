@@ -50,13 +50,14 @@ private val REQUIRED_PERMISSIONS = listOf(
 )
 
 @Composable
-fun MainScreen() {
+fun MainScreen(onThemeChange: (Int) -> Unit) {
     val context = LocalContext.current
     val navController = rememberNavController()
     
     var permissionTrigger by remember { mutableIntStateOf(0) }
     
     // Shared state for settings
+    var themeMode by remember { mutableIntStateOf(Prefs.themeMode(context)) }
     var serviceEnabled by remember { mutableStateOf(Prefs.serviceEnabled(context)) }
     var smsEnabled by remember { mutableStateOf(Prefs.smsEnabled(context)) }
     var pin by remember { mutableStateOf(Prefs.pin(context)) }
@@ -132,6 +133,12 @@ fun MainScreen() {
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(
+                    themeMode = themeMode,
+                    onThemeModeChange = {
+                        themeMode = it
+                        Prefs.setThemeMode(context, it)
+                        onThemeChange(it)
+                    },
                     smsEnabled = smsEnabled,
                     onSmsEnabledChange = {
                         smsEnabled = it

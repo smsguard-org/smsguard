@@ -3,20 +3,25 @@ package com.example.smsguard.ui
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +35,8 @@ import com.example.smsguard.ui.components.SwitchRow
 
 @Composable
 fun SettingsScreen(
+    themeMode: Int,
+    onThemeModeChange: (Int) -> Unit,
     smsEnabled: Boolean,
     onSmsEnabledChange: (Boolean) -> Unit,
     pin: String,
@@ -54,6 +61,33 @@ fun SettingsScreen(
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.primary
             )
+        }
+
+        // Section: App Theme
+        item {
+            SectionHeader(title = "App Theme", icon = Icons.Default.Palette)
+        }
+
+        item {
+            SectionCard {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ThemeOption(
+                        label = "System Default",
+                        selected = themeMode == 0,
+                        onClick = { onThemeModeChange(0) }
+                    )
+                    ThemeOption(
+                        label = "Light Mode",
+                        selected = themeMode == 1,
+                        onClick = { onThemeModeChange(1) }
+                    )
+                    ThemeOption(
+                        label = "Dark Mode",
+                        selected = themeMode == 2,
+                        onClick = { onThemeModeChange(2) }
+                    )
+                }
+            }
         }
 
         // Section: Protection Settings
@@ -124,5 +158,23 @@ fun SettingsScreen(
         item {
             Spacer(Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun ThemeOption(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+        RadioButton(selected = selected, onClick = onClick)
     }
 }

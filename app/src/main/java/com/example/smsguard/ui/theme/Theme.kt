@@ -56,9 +56,14 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun SmsguardTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: Int = 0, // 0: System, 1: Light, 2: Dark
     content: @Composable () -> Unit
 ) {
+    val darkTheme = when (themeMode) {
+        1 -> false
+        2 -> true
+        else -> isSystemInDarkTheme()
+    }
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     MaterialTheme(

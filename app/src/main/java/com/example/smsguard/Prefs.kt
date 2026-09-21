@@ -20,6 +20,7 @@ object Prefs {
     private const val KEY_COMMAND_HISTORY = "command_history"
     private const val KEY_SERVICE_ENABLED = "service_enabled"
     private const val KEY_SERVICE_START_TIME = "service_start_time"
+    private const val KEY_THEME_MODE = "theme_mode"
 
     const val DEFAULT_PIN = "1234"
     const val DEFAULT_BATTERY_THRESHOLD = 5
@@ -127,4 +128,10 @@ object Prefs {
     }
 
     fun serviceStartTime(context: Context): Long = sp(context).getLong(KEY_SERVICE_START_TIME, 0L)
+
+    fun themeMode(context: Context): Int = sp(context).getInt(KEY_THEME_MODE, 0) // 0: System, 1: Light, 2: Dark
+
+    fun setThemeMode(context: Context, mode: Int) {
+        sp(context).edit().putInt(KEY_THEME_MODE, mode).apply()
+    }
 }
