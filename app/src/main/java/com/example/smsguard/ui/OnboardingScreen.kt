@@ -1,7 +1,12 @@
 package com.example.smsguard.ui
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -64,17 +69,18 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.smsguard.Prefs
 import com.example.smsguard.R
 import com.example.smsguard.SmsGuardCommand
 import kotlin.math.roundToInt
 
-private val ONBOARDING_PERMISSIONS = listOf(
+private val ONBOARDING_PERMISSIONS = listOfNotNull(
     Manifest.permission.RECEIVE_SMS,
     Manifest.permission.SEND_SMS,
     Manifest.permission.ACCESS_FINE_LOCATION,
-    Manifest.permission.POST_NOTIFICATIONS
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.POST_NOTIFICATIONS else null
 )
 
 private const val WELCOME_STEP = 0
@@ -88,7 +94,6 @@ private const val TOTAL_STEPS = 5
 fun OnboardingScreen(onComplete: () -> Unit) {
     val context = LocalContext.current
     var step by remember { mutableIntStateOf(WELCOME_STEP) }
-    
     var permissionTrigger by remember { mutableIntStateOf(0) }
 
     var smsEnabled by remember { mutableStateOf(true) }
@@ -109,7 +114,24 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             }.toSet()
         )
     }
-    val allGranted = missingPermissions.isEmpty()
+
+    // Critical permissions: SMS and at least some location
+    val hasSms = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED &&
+                 ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
+    val hasLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                      ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    
+    val canProceedFromPermissions = hasSms && hasLocation
+
+    val isPermanentlyDenied = remember(missingPermissions) {
+        val activity = context as? Activity
+        missingPermissions.any { permission ->
+            activity?.let {
+                !ActivityCompat.shouldShowRequestPermissionRationale(it, permission) &&
+                        ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED
+            } ?: false
+        }
+    }
 
     val pinValid = SmsGuardCommand.forPin(pin) != null
     val pinMatches = pin == pinConfirm && pin.isNotEmpty()
@@ -168,25 +190,32 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             ) {
                                 Text(stringResource(R.string.onboarding_back))
                             }
-                            if (step == PERMISSIONS_STEP && !allGranted) {
-                                Button(onClick = {
-                                    permissionLauncher.launch(missingPermissions.toTypedArray())
-                                }, modifier = Modifier.weight(1.5f)) {
-                                    Text(stringResource(R.string.grant_permissions_button))
+                            if (step == PERMISSIONS_STEP && !canProceedFromPermissions) {
+                                Button(
+                                    onClick = {
+                                        if (isPermanentlyDenied) {
+                                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                                data = Uri.fromParts("package", context.packageName, null)
+                                            }
+                                            context.startActivity(intent)
+                                        } else {
+                                            permissionLauncher.launch(missingPermissions.toTypedArray())
+                                        }
+                                    }, 
+                                    modifier = Modifier.weight(1.5f)
+                                ) {
+                                    Text(if (isPermanentlyDenied) "Open App Settings" else stringResource(R.string.grant_permissions_button))
                                 }
                             } else {
                                 Button(
                                     onClick = {
-                                        when (step) {
-                                            SECURITY_STEP -> {
-                                                Prefs.setPin(context, pin)
-                                                Prefs.setSmsEnabled(context, smsEnabled)
-                                            }
-                                            CONTACT_STEP -> {
-                                                Prefs.setTrustedContact(context, contact)
-                                                Prefs.setBatteryBeaconEnabled(context, beaconEnabled)
-                                                Prefs.setBatteryThreshold(context, threshold.toInt())
-                                            }
+                                        if (step == SECURITY_STEP) {
+                                            Prefs.setPin(context, pin)
+                                            Prefs.setSmsEnabled(context, smsEnabled)
+                                        } else if (step == CONTACT_STEP) {
+                                            Prefs.setTrustedContact(context, contact)
+                                            Prefs.setBatteryBeaconEnabled(context, beaconEnabled)
+                                            Prefs.setBatteryThreshold(context, threshold.toInt())
                                         }
                                         step++
                                     },
@@ -231,8 +260,15 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         WELCOME_STEP -> WelcomeStep()
                         PERMISSIONS_STEP -> PermissionsStep(
                             missing = missingPermissions,
-                            allGranted = allGranted,
-                            onRequest = { permissionLauncher.launch(missingPermissions.toTypedArray()) }
+                            canProceed = canProceedFromPermissions,
+                            isPermanentlyDenied = isPermanentlyDenied,
+                            onGrant = { permissionLauncher.launch(missingPermissions.toTypedArray()) },
+                            onOpenSettings = {
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                }
+                                context.startActivity(intent)
+                            }
                         )
                         SECURITY_STEP -> SecurityStep(
                             pin = pin,
@@ -308,8 +344,10 @@ private fun WelcomeStep() {
 @Composable
 private fun PermissionsStep(
     missing: Set<String>,
-    allGranted: Boolean,
-    onRequest: () -> Unit
+    canProceed: Boolean,
+    isPermanentlyDenied: Boolean,
+    onGrant: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     Spacer(Modifier.height(8.dp))
     Text(
@@ -319,9 +357,14 @@ private fun PermissionsStep(
         color = MaterialTheme.colorScheme.primary
     )
     Text(
-        text = stringResource(R.string.onboarding_permissions_subtitle),
+        text = if (isPermanentlyDenied && !canProceed) 
+            "Essential permissions are restricted. Please enable them manually in Settings to continue."
+        else if (isPermanentlyDenied)
+            "Some optional permissions are restricted. You can continue or enable them in Settings."
+        else 
+            stringResource(R.string.onboarding_permissions_subtitle),
         style = MaterialTheme.typography.bodyLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+        color = if (isPermanentlyDenied && !canProceed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
     )
     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
@@ -338,20 +381,23 @@ private fun PermissionsStep(
     PermissionRow(
         title = stringResource(R.string.perm_location),
         description = stringResource(R.string.perm_location_desc),
-        granted = Manifest.permission.ACCESS_FINE_LOCATION !in missing
+        granted = Manifest.permission.ACCESS_FINE_LOCATION !in missing && 
+                  Manifest.permission.ACCESS_COARSE_LOCATION !in missing
     )
-    PermissionRow(
-        title = stringResource(R.string.perm_notifications),
-        description = stringResource(R.string.perm_notifications_desc),
-        granted = Manifest.permission.POST_NOTIFICATIONS !in missing
-    )
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        PermissionRow(
+            title = stringResource(R.string.perm_notifications),
+            description = stringResource(R.string.perm_notifications_desc),
+            granted = Manifest.permission.POST_NOTIFICATIONS !in missing
+        )
+    }
 
-    if (!allGranted) {
+    if (!canProceed) {
         Button(
-            onClick = onRequest,
+            onClick = if (isPermanentlyDenied) onOpenSettings else onGrant,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(stringResource(R.string.grant_permissions_button))
+            Text(if (isPermanentlyDenied) "Open App Settings" else stringResource(R.string.grant_permissions_button))
         }
     }
 }
