@@ -5,7 +5,13 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,8 +25,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,7 +50,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,12 +62,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.smsguard.Prefs
 import com.example.smsguard.R
 import com.example.smsguard.SmsGuardCommand
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private val ONBOARDING_PERMISSIONS = listOf(
@@ -84,8 +87,7 @@ private const val TOTAL_STEPS = 5
 @Composable
 fun OnboardingScreen(onComplete: () -> Unit) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val pagerState = rememberPagerState(pageCount = { TOTAL_STEPS })
+    var step by remember { mutableIntStateOf(WELCOME_STEP) }
     
     var permissionTrigger by remember { mutableIntStateOf(0) }
 
@@ -112,10 +114,8 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     val pinValid = SmsGuardCommand.forPin(pin) != null
     val pinMatches = pin == pinConfirm && pin.isNotEmpty()
 
-    BackHandler(enabled = pagerState.currentPage > WELCOME_STEP) {
-        scope.launch {
-            pagerState.animateScrollToPage(pagerState.currentPage - 1)
-        }
+    BackHandler(enabled = step > WELCOME_STEP) {
+        step--
     }
 
     Surface(
@@ -128,7 +128,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 .safeDrawingPadding(),
             topBar = {
                 val animatedProgress by animateFloatAsState(
-                    targetValue = (pagerState.currentPage + 1) / TOTAL_STEPS.toFloat(),
+                    targetValue = (step + 1) / TOTAL_STEPS.toFloat(),
                     label = "ProgressAnimation"
                 )
                 LinearProgressIndicator(
@@ -144,12 +144,10 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
                 ) {
-                    when (pagerState.currentPage) {
+                    when (step) {
                         WELCOME_STEP -> FullWidthButton(
                             text = stringResource(R.string.onboarding_continue),
-                            onClick = {
-                                scope.launch { pagerState.animateScrollToPage(WELCOME_STEP + 1) }
-                            }
+                            onClick = { step++ }
                         )
                         DONE_STEP -> FullWidthButton(
                             text = stringResource(R.string.onboarding_get_started),
@@ -165,14 +163,12 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             TextButton(
-                                onClick = {
-                                    scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
-                                },
+                                onClick = { step-- },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text(stringResource(R.string.onboarding_back))
                             }
-                            if (pagerState.currentPage == PERMISSIONS_STEP && !allGranted) {
+                            if (step == PERMISSIONS_STEP && !allGranted) {
                                 Button(onClick = {
                                     permissionLauncher.launch(missingPermissions.toTypedArray())
                                 }, modifier = Modifier.weight(1.5f)) {
@@ -181,7 +177,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             } else {
                                 Button(
                                     onClick = {
-                                        when (pagerState.currentPage) {
+                                        when (step) {
                                             SECURITY_STEP -> {
                                                 Prefs.setPin(context, pin)
                                                 Prefs.setSmsEnabled(context, smsEnabled)
@@ -192,9 +188,9 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                                 Prefs.setBatteryThreshold(context, threshold.toInt())
                                             }
                                         }
-                                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
+                                        step++
                                     },
-                                    enabled = when (pagerState.currentPage) {
+                                    enabled = when (step) {
                                         SECURITY_STEP -> pinValid && pinMatches
                                         else -> true
                                     },
@@ -208,13 +204,22 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                 }
             }
         ) { innerPadding ->
-            HorizontalPager(
-                state = pagerState,
+            AnimatedContent(
+                targetState = step,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
-                userScrollEnabled = false // Control navigation via buttons for a directed flow
-            ) { page ->
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        (slideInHorizontally { width -> width } + fadeIn()).togetherWith(
+                            slideOutHorizontally { width -> -width } + fadeOut())
+                    } else {
+                        (slideInHorizontally { width -> -width } + fadeIn()).togetherWith(
+                            slideOutHorizontally { width -> width } + fadeOut())
+                    }
+                },
+                label = "StepTransition"
+            ) { targetStep ->
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -222,7 +227,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    when (page) {
+                    when (targetStep) {
                         WELCOME_STEP -> WelcomeStep()
                         PERMISSIONS_STEP -> PermissionsStep(
                             missing = missingPermissions,
@@ -270,33 +275,37 @@ fun OnboardingScreen(onComplete: () -> Unit) {
 
 @Composable
 private fun WelcomeStep() {
-    Spacer(Modifier.height(8.dp))
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(vertical = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         Image(
             painter = painterResource(id = R.drawable.app_logo),
             contentDescription = null,
             modifier = Modifier
-                .size(80.dp)
+                .size(120.dp)
                 .clip(RoundedCornerShape(12.dp)),
             contentScale = ContentScale.Fit
         )
-        Column {
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = stringResource(R.string.onboarding_welcome_subtitle),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Spacer(Modifier.height(24.dp))
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = stringResource(R.string.onboarding_welcome_subtitle),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
     }
 }
 
