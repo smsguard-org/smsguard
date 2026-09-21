@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -43,6 +44,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard)
     object Commands : Screen("commands", "Commands", Icons.AutoMirrored.Filled.ListAlt)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
+    object Activity : Screen("activity", "Activity", Icons.Default.History)
 }
 
 private val REQUIRED_PERMISSIONS = listOf(
@@ -129,7 +131,16 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
                     missingPermissionsCount = missingPermissions.size,
                     onFixPermissions = {
                         permissionLauncher.launch(missingPermissions.toTypedArray())
+                    },
+                    onSeeAllActivity = {
+                        navController.navigate(Screen.Activity.route)
                     }
+                )
+            }
+            composable(Screen.Activity.route) {
+                ActivityScreen(
+                    commandHistory = Prefs.commandHistory(context),
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable(Screen.Commands.route) {

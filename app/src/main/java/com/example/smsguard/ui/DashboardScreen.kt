@@ -37,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -70,6 +71,7 @@ fun DashboardScreen(
     commandHistory: List<String>,
     missingPermissionsCount: Int,
     onFixPermissions: () -> Unit,
+    onSeeAllActivity: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyVerticalGrid(
@@ -145,8 +147,9 @@ fun DashboardScreen(
         }
 
         if (commandHistory.isNotEmpty()) {
-            items(commandHistory.size, span = { GridItemSpan(2) }) { index ->
-                val parts = commandHistory[index].split("|")
+            val previewItems = commandHistory.take(3)
+            items(previewItems.size, span = { GridItemSpan(2) }) { index ->
+                val parts = previewItems[index].split("|")
                 val name = parts.getOrNull(0) ?: "Unknown"
                 val time = parts.getOrNull(1)?.toLongOrNull() ?: 0L
                 
@@ -161,6 +164,17 @@ fun DashboardScreen(
                     time = timeString,
                     status = "Executed"
                 )
+            }
+            
+            if (commandHistory.size > 3) {
+                item(span = { GridItemSpan(2) }) {
+                    TextButton(
+                        onClick = onSeeAllActivity,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("See All Activity (${commandHistory.size})")
+                    }
+                }
             }
         } else {
             item(span = { GridItemSpan(2) }) {

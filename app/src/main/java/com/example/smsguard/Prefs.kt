@@ -92,10 +92,8 @@ object Prefs {
     private fun addToHistory(context: Context, entry: String) {
         val history = commandHistory(context).toMutableList()
         history.add(0, entry)
-        val limited = history.take(5)
+        val limited = history.take(50)
         sp(context).edit().putStringSet(KEY_COMMAND_HISTORY, limited.toSet()).apply()
-        // Note: StringSets don't guarantee order, so we might need a different approach for true history.
-        // But for dummy/simple history it might suffice if we parse the time.
     }
 
     fun commandHistory(context: Context): List<String> {
