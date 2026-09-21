@@ -122,9 +122,6 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
                     missingPermissionsCount = missingPermissions.size,
                     onFixPermissions = {
                         permissionLauncher.launch(missingPermissions.toTypedArray())
-                    },
-                    onManageCommands = {
-                        navController.navigate(Screen.Commands.route)
                     }
                 )
             }

@@ -67,7 +67,6 @@ fun DashboardScreen(
     commandHistory: List<String>,
     missingPermissionsCount: Int,
     onFixPermissions: () -> Unit,
-    onManageCommands: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyVerticalGrid(
@@ -91,7 +90,7 @@ fun DashboardScreen(
                     contentDescription = null,
                     modifier = Modifier
                         .size(64.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(12.dp))
                 )
                 Column {
                     Text(
@@ -124,7 +123,7 @@ fun DashboardScreen(
                 title = "Alerts Fired",
                 value = alertCount.toString(),
                 icon = Icons.Default.NotificationsActive,
-                containerColor = MaterialTheme.colorScheme.primaryContainer
+                containerColor = MaterialTheme.colorScheme.surface
             )
         }
         item {
@@ -132,7 +131,7 @@ fun DashboardScreen(
                 title = "Cmds Received",
                 value = commandCount.toString(),
                 icon = Icons.Default.Sms,
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                containerColor = MaterialTheme.colorScheme.surface
             )
         }
 
@@ -178,29 +177,6 @@ fun DashboardScreen(
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    }
-                }
-            }
-        }
-
-        // Manage Commands Section
-        item(span = { GridItemSpan(2) }) {
-            SectionHeader(title = "Operations", icon = Icons.AutoMirrored.Filled.ListAlt)
-        }
-
-        item(span = { GridItemSpan(2) }) {
-            SectionCard {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = "Manage and view available SMS commands to control your device remotely.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    FilledTonalButton(
-                        onClick = onManageCommands,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Manage Commands")
                     }
                 }
             }
@@ -274,10 +250,9 @@ private fun ServiceStatusCard(
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer 
-                             else MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Row(
@@ -292,15 +267,13 @@ private fun ServiceStatusCard(
                     text = if (enabled) "Protection Active" else "Protection Paused",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer 
-                            else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = if (enabled) "Online for $runningTime" 
                            else "System is offline",
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) 
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
             }
             Switch(
@@ -326,7 +299,7 @@ private fun StatCard(
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(containerColor = containerColor),
-        shape = RoundedCornerShape(24.dp)
+        shape = RoundedCornerShape(12.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -347,7 +320,7 @@ private fun RecentActivityCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )

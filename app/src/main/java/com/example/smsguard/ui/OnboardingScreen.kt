@@ -281,7 +281,7 @@ private fun WelcomeStep() {
             contentDescription = null,
             modifier = Modifier
                 .size(80.dp)
-                .clip(RoundedCornerShape(20.dp)),
+                .clip(RoundedCornerShape(12.dp)),
             contentScale = ContentScale.Fit
         )
         Column {
