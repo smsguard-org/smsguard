@@ -116,7 +116,10 @@ object Prefs {
 
     fun setServiceEnabled(context: Context, enabled: Boolean) {
         val current = serviceEnabled(context)
-        if (current == enabled) return
+        val startTime = serviceStartTime(context)
+        
+        // If already in the target state AND we have a valid start time (if enabling), skip.
+        if (current == enabled && (!enabled || startTime > 0)) return
         
         val editor = sp(context).edit().putBoolean(KEY_SERVICE_ENABLED, enabled)
         if (enabled) {

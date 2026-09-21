@@ -153,6 +153,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             text = stringResource(R.string.onboarding_get_started),
                             onClick = {
                                 Prefs.setOnboarded(context, true)
+                                Prefs.setServiceEnabled(context, true)
                                 onComplete()
                             }
                         )
