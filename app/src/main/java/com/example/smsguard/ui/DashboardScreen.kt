@@ -2,6 +2,7 @@ package com.example.smsguard.ui
 
 import android.text.format.DateUtils
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
@@ -113,7 +115,8 @@ fun DashboardScreen(
             ServiceStatusCard(
                 enabled = serviceEnabled,
                 onToggle = onServiceToggle,
-                startTime = serviceStartTime
+                startTime = serviceStartTime,
+                hasError = missingPermissionsCount > 0
             )
         }
 
@@ -225,7 +228,8 @@ fun DashboardScreen(
 private fun ServiceStatusCard(
     enabled: Boolean,
     onToggle: (Boolean) -> Unit,
-    startTime: Long
+    startTime: Long,
+    hasError: Boolean
 ) {
     var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
@@ -248,11 +252,17 @@ private fun ServiceStatusCard(
         "00:00"
     }
 
+    val dotColor = when {
+        hasError -> MaterialTheme.colorScheme.error
+        enabled -> Color(0xFF4CAF50) // Green
+        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.5f) // Grey
+    }
+
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Row(
@@ -262,19 +272,39 @@ private fun ServiceStatusCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = if (enabled) "Protection Active" else "Protection Paused",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                // Status Dot
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(dotColor)
                 )
-                Text(
-                    text = if (enabled) "Online for $runningTime" 
-                           else "System is offline",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                )
+                
+                Column {
+                    val statusText = when {
+                        hasError -> "System Issue"
+                        enabled -> "Protection Active"
+                        else -> "Protection Paused"
+                    }
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = if (enabled && !hasError) "Online for $runningTime" 
+                               else if (hasError) "Check permissions"
+                               else "System is offline",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    )
+                }
             }
             Switch(
                 checked = enabled,
