@@ -26,8 +26,8 @@ jobs:
       - name: Grant Execute Permissions for Gradlew
         run: chmod +x gradlew
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
+      - name: Build Debug APK (Auto-signed)
+        run: ./gradlew assembleDebug
 
       - name: Get Tag Version
         id: get_version
@@ -35,7 +35,7 @@ jobs:
 
       - name: Rename APK
         run: |
-          mv app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/SMSGuard-${{ steps.get_version.outputs.VERSION }}.apk
+          mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/SMSGuard-${{ steps.get_version.outputs.VERSION }}-test.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -45,6 +45,6 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
