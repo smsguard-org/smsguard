@@ -4,6 +4,9 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -106,7 +109,11 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
         NavHost(
             navController = navController,
             startDestination = Screen.Dashboard.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { fadeIn(animationSpec = tween(150)) },
+            exitTransition = { fadeOut(animationSpec = tween(150)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(150)) },
+            popExitTransition = { fadeOut(animationSpec = tween(150)) }
         ) {
             composable(Screen.Dashboard.route) {
                 DashboardScreen(
