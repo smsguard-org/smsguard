@@ -68,8 +68,6 @@ import androidx.core.content.ContextCompat
 import com.example.smsguard.Prefs
 import com.example.smsguard.R
 import com.example.smsguard.SmsGuardCommand
-import com.example.smsguard.ui.components.SectionCard
-import com.example.smsguard.ui.components.SwitchRow
 import kotlin.math.roundToInt
 
 private val ONBOARDING_PERMISSIONS = listOf(
@@ -237,8 +235,6 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             onRequest = { permissionLauncher.launch(missingPermissions.toTypedArray()) }
                         )
                         SECURITY_STEP -> SecurityStep(
-                            smsEnabled = smsEnabled,
-                            onSmsEnabledChange = { smsEnabled = it },
                             pin = pin,
                             onPinChange = { value ->
                                 pin = value.filter { it.isDigit() }.take(SmsGuardCommand.PIN_MAX_LENGTH)
@@ -253,8 +249,6 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         CONTACT_STEP -> ContactStep(
                             contact = contact,
                             onContactChange = { contact = it },
-                            beaconEnabled = beaconEnabled,
-                            onBeaconEnabledChange = { beaconEnabled = it },
                             threshold = threshold,
                             onThresholdChange = { value ->
                                 val rounded = value.roundToInt().toFloat()
@@ -364,8 +358,6 @@ private fun PermissionsStep(
 
 @Composable
 private fun SecurityStep(
-    smsEnabled: Boolean,
-    onSmsEnabledChange: (Boolean) -> Unit,
     pin: String,
     onPinChange: (String) -> Unit,
     pinConfirm: String,
@@ -386,62 +378,45 @@ private fun SecurityStep(
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 
-    SectionCard {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            SwitchRow(
-                title = stringResource(R.string.enable_sms_commands),
-                subtitle = "Allow device control via SMS",
-                checked = smsEnabled,
-                onCheckedChange = onSmsEnabledChange
-            )
-
-            if (smsEnabled) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
-                
-                OutlinedTextField(
-                    value = pin,
-                    onValueChange = onPinChange,
-                    label = { Text(stringResource(R.string.pin_label)) },
-                    placeholder = { Text(stringResource(R.string.pin_hint)) },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    isError = pin.isNotEmpty() && !pinValid,
-                    supportingText = {
-                        if (pin.isNotEmpty() && !pinValid) {
-                            Text(stringResource(R.string.pin_too_short))
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = pinConfirm,
-                    onValueChange = onPinConfirmChange,
-                    label = { Text(stringResource(R.string.pin_confirm_label)) },
-                    placeholder = { Text(stringResource(R.string.pin_confirm_hint)) },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    isError = pinConfirm.isNotEmpty() && !pinMatches,
-                    supportingText = {
-                        if (pinConfirm.isNotEmpty() && !pinMatches) {
-                            Text(stringResource(R.string.pin_mismatch))
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
+    TextField(
+        value = pin,
+        onValueChange = onPinChange,
+        label = { Text(stringResource(R.string.pin_label)) },
+        placeholder = { Text(stringResource(R.string.pin_hint)) },
+        singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+        isError = pin.isNotEmpty() && !pinValid,
+        supportingText = {
+            if (pin.isNotEmpty() && !pinValid) {
+                Text(stringResource(R.string.pin_too_short))
             }
-        }
-    }
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    TextField(
+        value = pinConfirm,
+        onValueChange = onPinConfirmChange,
+        label = { Text(stringResource(R.string.pin_confirm_label)) },
+        placeholder = { Text(stringResource(R.string.pin_confirm_hint)) },
+        singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+        isError = pinConfirm.isNotEmpty() && !pinMatches,
+        supportingText = {
+            if (pinConfirm.isNotEmpty() && !pinMatches) {
+                Text(stringResource(R.string.pin_mismatch))
+            }
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable
 private fun ContactStep(
     contact: String,
     onContactChange: (String) -> Unit,
-    beaconEnabled: Boolean,
-    onBeaconEnabledChange: (Boolean) -> Unit,
     threshold: Float,
     onThresholdChange: (Float) -> Unit
 ) {
@@ -457,50 +432,41 @@ private fun ContactStep(
         style = MaterialTheme.typography.bodyLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
+    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-    SectionCard {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            SwitchRow(
-                title = stringResource(R.string.enable_battery_beacon),
-                subtitle = "Alert trusted contact on low battery",
-                checked = beaconEnabled,
-                onCheckedChange = onBeaconEnabledChange
-            )
+    OutlinedTextField(
+        value = contact,
+        onValueChange = onContactChange,
+        label = { Text(stringResource(R.string.trusted_contact_label)) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+        modifier = Modifier.fillMaxWidth()
+    )
+    Text(
+        text = stringResource(R.string.perm_send_sms_desc),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 
-            if (beaconEnabled) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
+    Spacer(Modifier.height(16.dp))
 
-                OutlinedTextField(
-                    value = contact,
-                    onValueChange = onContactChange,
-                    label = { Text(stringResource(R.string.trusted_contact_label)) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Column {
-                    Text(
-                        text = stringResource(R.string.battery_threshold_label),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Slider(
-                        value = threshold,
-                        onValueChange = onThresholdChange,
-                        valueRange = 1f..20f,
-                        steps = 18,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Text(
-                        text = stringResource(R.string.battery_threshold_value, threshold.toInt()),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-        }
-    }
+    Text(
+        text = stringResource(R.string.battery_threshold_label),
+        style = MaterialTheme.typography.bodyMedium
+    )
+    Slider(
+        value = threshold,
+        onValueChange = onThresholdChange,
+        valueRange = 1f..20f,
+        steps = 18,
+        modifier = Modifier.fillMaxWidth()
+    )
+    Text(
+        text = stringResource(R.string.battery_threshold_value, threshold.toInt()),
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary
+    )
 }
 
 @Composable
