@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 
+/** Creates notification channels and builds the ongoing siren notification with a Stop action. */
 object NotificationHelper {
     const val CHANNEL_SIREN = "siren"
     const val NOTIF_SIREN = 1001

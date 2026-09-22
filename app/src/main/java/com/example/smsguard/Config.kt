@@ -1,5 +1,6 @@
 package com.example.smsguard
 
+/** SMS commands recognized by the app and their PIN format. */
 object SmsGuardCommand {
     const val LOCATE = "LOCATE"
     const val ALARM = "ALARM"
@@ -14,6 +15,7 @@ object SmsGuardCommand {
     }
 }
 
+/** Intents used to start/stop the siren foreground service. */
 object SirenServiceActions {
     const val START = "com.example.smsguard.action.START_SIREN"
     const val STOP = "com.example.smsguard.action.STOP_SIREN"

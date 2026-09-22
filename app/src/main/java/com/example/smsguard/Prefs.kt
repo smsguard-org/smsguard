@@ -3,6 +3,7 @@ package com.example.smsguard
 import android.content.Context
 import android.content.SharedPreferences
 
+/** SharedPreferences-backed persistence for all app settings, counters, and history. */
 object Prefs {
     private const val NAME = "smsguard_prefs"
 

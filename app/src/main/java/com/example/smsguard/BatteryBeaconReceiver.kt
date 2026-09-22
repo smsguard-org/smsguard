@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.BatteryManager
 import java.util.Locale
 
+/** Alerts a trusted contact via SMS when battery drops to the configured threshold. */
 class BatteryBeaconReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {

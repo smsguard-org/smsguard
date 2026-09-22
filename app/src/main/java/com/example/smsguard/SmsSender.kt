@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.telephony.SmsManager
 import androidx.core.content.ContextCompat
 
+/** Sends text messages once the SEND_SMS permission is granted. */
 object SmsSender {
     fun canSend(context: Context): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) ==

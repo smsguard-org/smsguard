@@ -8,6 +8,7 @@ import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.sin
 
+/** Generates a short WAV siren tone on first use and caches it in the cache dir. */
 object SirenSound {
     private const val SAMPLE_RATE = 22050
     private const val DURATION_SEC = 2

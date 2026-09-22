@@ -9,6 +9,7 @@ import android.media.MediaPlayer
 import android.os.Build
 import android.os.IBinder
 
+/** Foreground service that plays a looping siren on the alarm stream. */
 class SirenService : Service() {
 
     private var player: MediaPlayer? = null

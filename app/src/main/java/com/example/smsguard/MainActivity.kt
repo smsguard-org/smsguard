@@ -19,6 +19,7 @@ import com.example.smsguard.ui.MainScreen
 import com.example.smsguard.ui.OnboardingScreen
 import com.example.smsguard.ui.theme.SmsguardTheme
 
+/** Single-activity Compose entry point; shows onboarding until configured, then main screen. */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

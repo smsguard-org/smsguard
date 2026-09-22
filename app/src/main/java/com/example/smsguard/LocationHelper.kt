@@ -12,6 +12,7 @@ import android.os.Looper
 import androidx.core.content.ContextCompat
 import java.util.Locale
 
+/** Helpers for checking location permission, last-known fix, and fresh single fixes. */
 object LocationHelper {
     private const val FIX_TIMEOUT_MS = 8_000L
 

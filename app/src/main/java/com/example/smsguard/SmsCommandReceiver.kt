@@ -7,6 +7,7 @@ import android.provider.Telephony
 import androidx.core.content.ContextCompat
 import java.util.Locale
 
+/** High-priority receiver that runs PIN-authenticated commands from incoming SMS. */
 class SmsCommandReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
