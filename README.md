@@ -8,19 +8,8 @@ Android app that turns any phone into a remotely controllable safety device via 
 
 Commands are authenticated with a user-defined PIN (4–8 digits) set in the app.
 
-## Features
-
-- Jetpack Compose UI (support + compose-based screens)
-- SMS broadcast receiver with high-priority handling
-- Foreground siren service with media playback
-- Battery beacon and notification helpers
-- Location replies with Google Maps links
-
-## Build
-
-```sh
-./gradlew assembleDebug
-```
+APK files are available at the releases section.
+Creating an issue or PR is very welcome. 
 
 ## License
 
