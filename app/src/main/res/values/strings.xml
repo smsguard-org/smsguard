@@ -31,6 +31,10 @@
     <string name="permissions_granted">All permissions granted</string>
     <string name="grant_permissions">Grant permissions</string>
 
+    <string name="protection_channel">SMSGuard protection</string>
+    <string name="protection_notification_title">Protection Mode Active</string>
+    <string name="protection_notification_text">SMSGuard protection is ON • %1$s</string>
+
     <string name="siren_channel">SMSGuard siren</string>
     <string name="siren_notification">Triggered SMS command notification</string>
     <string name="siren_stop">Stop siren</string>

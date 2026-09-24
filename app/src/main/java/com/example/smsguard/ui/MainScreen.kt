@@ -20,6 +20,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -37,6 +38,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.smsguard.Prefs
+import com.example.smsguard.ProtectionService
 import com.example.smsguard.SmsGuardCommand
 import kotlin.math.roundToInt
 
@@ -82,6 +84,12 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
         )
     }
 
+    // Keep the ongoing protection notification in sync with persisted state.
+    LaunchedEffect(serviceEnabled) {
+        if (serviceEnabled) ProtectionService.start(context)
+        else ProtectionService.stop(context)
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -123,6 +131,8 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
                     onServiceToggle = {
                         serviceEnabled = it
                         Prefs.setServiceEnabled(context, it)
+                        if (it) ProtectionService.start(context)
+                        else ProtectionService.stop(context)
                     },
                     serviceStartTime = Prefs.serviceStartTime(context),
                     commandCount = Prefs.commandCount(context),

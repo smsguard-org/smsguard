@@ -2,6 +2,7 @@ package com.example.smsguard.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,14 +32,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -46,7 +43,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,23 +62,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.smsguard.Prefs
+import com.example.smsguard.ProtectionService
 import com.example.smsguard.R
 import com.example.smsguard.SmsGuardCommand
-import kotlin.math.roundToInt
 
-private val ONBOARDING_PERMISSIONS = listOf(
+private val ONBOARDING_PERMISSIONS = listOfNotNull(
     Manifest.permission.RECEIVE_SMS,
     Manifest.permission.SEND_SMS,
     Manifest.permission.ACCESS_FINE_LOCATION,
-    Manifest.permission.POST_NOTIFICATIONS
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.POST_NOTIFICATIONS else null
 )
 
 private const val WELCOME_STEP = 0
 private const val PERMISSIONS_STEP = 1
 private const val SECURITY_STEP = 2
-private const val CONTACT_STEP = 3
-private const val DONE_STEP = 4
-private const val TOTAL_STEPS = 5
+private const val DONE_STEP = 3
+private const val TOTAL_STEPS = 4
 
 @Composable
 fun OnboardingScreen(onComplete: () -> Unit) {
@@ -94,9 +89,6 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     var smsEnabled by remember { mutableStateOf(true) }
     var pin by remember { mutableStateOf("") }
     var pinConfirm by remember { mutableStateOf("") }
-    var contact by remember { mutableStateOf("") }
-    var beaconEnabled by remember { mutableStateOf(true) }
-    var threshold by remember { mutableFloatStateOf(Prefs.DEFAULT_BATTERY_THRESHOLD.toFloat()) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -109,7 +101,15 @@ fun OnboardingScreen(onComplete: () -> Unit) {
             }.toSet()
         )
     }
-    val allGranted = missingPermissions.isEmpty()
+
+    val smsGranted = Manifest.permission.RECEIVE_SMS !in missingPermissions && 
+                     Manifest.permission.SEND_SMS !in missingPermissions
+    val locationGranted = Manifest.permission.ACCESS_FINE_LOCATION !in missingPermissions
+    val notificationsGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Manifest.permission.POST_NOTIFICATIONS !in missingPermissions
+    } else true
+
+    val allGranted = smsGranted && locationGranted && notificationsGranted
 
     val pinValid = SmsGuardCommand.forPin(pin) != null
     val pinMatches = pin == pinConfirm && pin.isNotEmpty()
@@ -152,7 +152,9 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         DONE_STEP -> FullWidthButton(
                             text = stringResource(R.string.onboarding_get_started),
                             onClick = {
+                                Prefs.setServiceEnabled(context, true)
                                 Prefs.setOnboarded(context, true)
+                                ProtectionService.start(context)
                                 onComplete()
                             }
                         )
@@ -169,24 +171,20 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                 Text(stringResource(R.string.onboarding_back))
                             }
                             if (step == PERMISSIONS_STEP && !allGranted) {
-                                Button(onClick = {
-                                    permissionLauncher.launch(missingPermissions.toTypedArray())
-                                }, modifier = Modifier.weight(1.5f)) {
+                                Button(
+                                    onClick = {
+                                        permissionLauncher.launch(missingPermissions.toTypedArray())
+                                    }, 
+                                    modifier = Modifier.weight(1.5f)
+                                ) {
                                     Text(stringResource(R.string.grant_permissions_button))
                                 }
                             } else {
                                 Button(
                                     onClick = {
-                                        when (step) {
-                                            SECURITY_STEP -> {
-                                                Prefs.setPin(context, pin)
-                                                Prefs.setSmsEnabled(context, smsEnabled)
-                                            }
-                                            CONTACT_STEP -> {
-                                                Prefs.setTrustedContact(context, contact)
-                                                Prefs.setBatteryBeaconEnabled(context, beaconEnabled)
-                                                Prefs.setBatteryThreshold(context, threshold.toInt())
-                                            }
+                                        if (step == SECURITY_STEP) {
+                                            Prefs.setPin(context, pin)
+                                            Prefs.setSmsEnabled(context, smsEnabled)
                                         }
                                         step++
                                     },
@@ -230,8 +228,9 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     when (targetStep) {
                         WELCOME_STEP -> WelcomeStep()
                         PERMISSIONS_STEP -> PermissionsStep(
-                            missing = missingPermissions,
-                            allGranted = allGranted,
+                            smsGranted = smsGranted,
+                            locationGranted = locationGranted,
+                            notificationsGranted = notificationsGranted,
                             onRequest = { permissionLauncher.launch(missingPermissions.toTypedArray()) }
                         )
                         SECURITY_STEP -> SecurityStep(
@@ -246,19 +245,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             pinValid = pinValid,
                             pinMatches = pinMatches
                         )
-                        CONTACT_STEP -> ContactStep(
-                            contact = contact,
-                            onContactChange = { contact = it },
-                            threshold = threshold,
-                            onThresholdChange = { value ->
-                                val rounded = value.roundToInt().toFloat()
-                                threshold = rounded
-                            }
-                        )
                         DONE_STEP -> DoneStep(
-                            contact = contact,
-                            beaconEnabled = beaconEnabled,
-                            threshold = threshold.toInt(),
                             smsEnabled = smsEnabled
                         )
                     }
@@ -307,8 +294,9 @@ private fun WelcomeStep() {
 
 @Composable
 private fun PermissionsStep(
-    missing: Set<String>,
-    allGranted: Boolean,
+    smsGranted: Boolean,
+    locationGranted: Boolean,
+    notificationsGranted: Boolean,
     onRequest: () -> Unit
 ) {
     Spacer(Modifier.height(8.dp))
@@ -326,27 +314,24 @@ private fun PermissionsStep(
     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
     PermissionRow(
-        title = stringResource(R.string.perm_receive_sms),
-        description = stringResource(R.string.perm_receive_sms_desc),
-        granted = Manifest.permission.RECEIVE_SMS !in missing
-    )
-    PermissionRow(
-        title = stringResource(R.string.perm_send_sms),
-        description = stringResource(R.string.perm_send_sms_desc),
-        granted = Manifest.permission.SEND_SMS !in missing
+        title = "SMS Permission",
+        description = "Detect commands and send automated replies",
+        granted = smsGranted
     )
     PermissionRow(
         title = stringResource(R.string.perm_location),
         description = stringResource(R.string.perm_location_desc),
-        granted = Manifest.permission.ACCESS_FINE_LOCATION !in missing
+        granted = locationGranted
     )
-    PermissionRow(
-        title = stringResource(R.string.perm_notifications),
-        description = stringResource(R.string.perm_notifications_desc),
-        granted = Manifest.permission.POST_NOTIFICATIONS !in missing
-    )
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        PermissionRow(
+            title = stringResource(R.string.perm_notifications),
+            description = stringResource(R.string.perm_notifications_desc),
+            granted = notificationsGranted
+        )
+    }
 
-    if (!allGranted) {
+    if (!(smsGranted && locationGranted && notificationsGranted)) {
         Button(
             onClick = onRequest,
             modifier = Modifier.fillMaxWidth()
@@ -414,66 +399,7 @@ private fun SecurityStep(
 }
 
 @Composable
-private fun ContactStep(
-    contact: String,
-    onContactChange: (String) -> Unit,
-    threshold: Float,
-    onThresholdChange: (Float) -> Unit
-) {
-    Spacer(Modifier.height(8.dp))
-    Text(
-        text = stringResource(R.string.onboarding_contact_title),
-        style = MaterialTheme.typography.headlineMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary
-    )
-    Text(
-        text = stringResource(R.string.onboarding_contact_subtitle),
-        style = MaterialTheme.typography.bodyLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-    OutlinedTextField(
-        value = contact,
-        onValueChange = onContactChange,
-        label = { Text(stringResource(R.string.trusted_contact_label)) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-        modifier = Modifier.fillMaxWidth()
-    )
-    Text(
-        text = stringResource(R.string.perm_send_sms_desc),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-
-    Spacer(Modifier.height(16.dp))
-
-    Text(
-        text = stringResource(R.string.battery_threshold_label),
-        style = MaterialTheme.typography.bodyMedium
-    )
-    Slider(
-        value = threshold,
-        onValueChange = onThresholdChange,
-        valueRange = 1f..20f,
-        steps = 18,
-        modifier = Modifier.fillMaxWidth()
-    )
-    Text(
-        text = stringResource(R.string.battery_threshold_value, threshold.toInt()),
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary
-    )
-}
-
-@Composable
 private fun DoneStep(
-    contact: String,
-    beaconEnabled: Boolean,
-    threshold: Int,
     smsEnabled: Boolean
 ) {
     Spacer(Modifier.height(8.dp))
@@ -491,42 +417,13 @@ private fun DoneStep(
     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
     SummaryRow(stringResource(R.string.enable_sms_commands), if (smsEnabled) "On" else "Off")
-    SummaryRow(
-        stringResource(R.string.battery_threshold_label),
-        stringResource(R.string.battery_threshold_value, threshold)
+    SummaryRow("Protection Mode", "Active")
+    Text(
+        text = "You can enable background protection and configure the battery beacon in the Settings tab later.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 8.dp)
     )
-    SummaryRow(
-        stringResource(R.string.trusted_contact_label),
-        if (contact.isBlank()) stringResource(R.string.battery_beacon_disabled) else contact
-    )
-    if (!beaconEnabled) {
-        SummaryRow(stringResource(R.string.enable_battery_beacon), "Off")
-    }
-}
-
-@Composable
-private fun FeatureCard(command: String, description: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = command,
-                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-    }
 }
 
 @Composable
