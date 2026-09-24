@@ -2,6 +2,14 @@ package com.example.smsguard
 
 import android.content.Context
 import android.content.SharedPreferences
+import java.util.UUID
+
+data class TrustedContact(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val phoneNumber: String,
+    val isPrimary: Boolean = false
+)
 
 /** SharedPreferences-backed persistence for all app settings, counters, and history. */
 object Prefs {
@@ -47,11 +55,73 @@ object Prefs {
         sp(context).edit().putString(KEY_PIN, pin).apply()
     }
 
+    private const val KEY_CONTACTS_SET = "trusted_contacts_set"
+
     fun trustedContact(context: Context): String =
         sp(context).getString(KEY_TRUSTED_CONTACT, "").orEmpty()
 
     fun setTrustedContact(context: Context, contact: String) {
         sp(context).edit().putString(KEY_TRUSTED_CONTACT, contact.trim()).apply()
+    }
+
+    fun trustedContactsList(context: Context): List<TrustedContact> {
+        val set = sp(context).getStringSet(KEY_CONTACTS_SET, emptySet()) ?: emptySet()
+        val list = set.mapNotNull { entry ->
+            val parts = entry.split("|")
+            if (parts.size >= 3) {
+                TrustedContact(
+                    id = parts[0],
+                    name = parts[1],
+                    phoneNumber = parts[2],
+                    isPrimary = parts.getOrNull(3)?.toBooleanStrictOrNull() ?: false
+                )
+            } else null
+        }
+        if (list.isEmpty()) {
+            val single = trustedContact(context)
+            if (single.isNotBlank()) {
+                val legacy = TrustedContact(name = "Emergency Contact", phoneNumber = single, isPrimary = true)
+                return listOf(legacy)
+            }
+        }
+        return list.sortedByDescending { it.isPrimary }
+    }
+
+    fun saveTrustedContacts(context: Context, contacts: List<TrustedContact>) {
+        val set = contacts.map { "${it.id}|${it.name}|${it.phoneNumber}|${it.isPrimary}" }.toSet()
+        sp(context).edit().putStringSet(KEY_CONTACTS_SET, set).apply()
+        
+        val primary = contacts.firstOrNull { it.isPrimary } ?: contacts.firstOrNull()
+        if (primary != null) {
+            setTrustedContact(context, primary.phoneNumber)
+        }
+    }
+
+    fun addTrustedContact(context: Context, name: String, phoneNumber: String, isPrimary: Boolean = false) {
+        val current = trustedContactsList(context).toMutableList()
+        val shouldBePrimary = isPrimary || current.isEmpty()
+        if (shouldBePrimary) {
+            for (i in current.indices) {
+                current[i] = current[i].copy(isPrimary = false)
+            }
+        }
+        current.add(TrustedContact(name = name, phoneNumber = phoneNumber, isPrimary = shouldBePrimary))
+        saveTrustedContacts(context, current)
+    }
+
+    fun removeTrustedContact(context: Context, contactId: String) {
+        val current = trustedContactsList(context).filter { it.id != contactId }.toMutableList()
+        if (current.isNotEmpty() && current.none { it.isPrimary }) {
+            current[0] = current[0].copy(isPrimary = true)
+        }
+        saveTrustedContacts(context, current)
+    }
+
+    fun setPrimaryContact(context: Context, contactId: String) {
+        val current = trustedContactsList(context).map { contact ->
+            contact.copy(isPrimary = contact.id == contactId)
+        }
+        saveTrustedContacts(context, current)
     }
 
     fun batteryBeaconEnabled(context: Context): Boolean =

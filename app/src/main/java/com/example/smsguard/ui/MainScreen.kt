@@ -7,7 +7,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ListAlt
@@ -37,6 +36,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.material.icons.filled.ContactPhone
 import com.example.smsguard.Prefs
 import com.example.smsguard.ProtectionService
 import com.example.smsguard.SmsGuardCommand
@@ -45,6 +45,7 @@ import kotlin.math.roundToInt
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard)
     object Commands : Screen("commands", "Commands", Icons.AutoMirrored.Filled.ListAlt)
+    object Contacts : Screen("contacts", "Contacts", Icons.Default.ContactPhone)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
     object Activity : Screen("activity", "Activity", Icons.Default.History)
 }
@@ -95,7 +96,7 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
-                val items = listOf(Screen.Dashboard, Screen.Commands, Screen.Settings)
+                val items = listOf(Screen.Dashboard, Screen.Commands, Screen.Contacts, Screen.Settings)
                 
                 items.forEach { screen ->
                     NavigationBarItem(
@@ -155,6 +156,9 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
             }
             composable(Screen.Commands.route) {
                 CommandsScreen()
+            }
+            composable(Screen.Contacts.route) {
+                ContactsScreen()
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(

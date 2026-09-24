@@ -12,8 +12,14 @@ class BatteryBeaconReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BATTERY_CHANGED) return
         if (!Prefs.batteryBeaconEnabled(context)) return
-        val contact = Prefs.trustedContact(context)
-        if (contact.isBlank()) return
+        val contacts = Prefs.trustedContactsList(context)
+        val recipients = if (contacts.isNotEmpty()) {
+            contacts.map { it.phoneNumber }
+        } else {
+            val single = Prefs.trustedContact(context)
+            if (single.isNotBlank()) listOf(single) else emptyList()
+        }
+        if (recipients.isEmpty()) return
 
         val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
         val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
@@ -35,7 +41,9 @@ class BatteryBeaconReceiver : BroadcastReceiver() {
             } else {
                 String.format(Locale.US, "SMSGuard alert: Battery %d%%.", percent)
             }
-            SmsSender.send(context, contact, body)
+            for (num in recipients) {
+                SmsSender.send(context, num, body)
+            }
         } else if (percent > threshold + 10) {
             Prefs.setBeaconSentLevel(context, -1)
         }
