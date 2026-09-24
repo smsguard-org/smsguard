@@ -132,10 +132,18 @@ object Prefs {
     fun serviceStartTime(context: Context): Long = sp(context).getLong(KEY_SERVICE_START_TIME, 0L)
 
     fun isCommandEnabled(context: Context, commandKey: String): Boolean =
-        sp(context).getBoolean("cmd_enabled_$commandKey", true)
+        sp(context).getBoolean("cmd_enabled_$commandKey", false)
 
     fun setCommandEnabled(context: Context, commandKey: String, enabled: Boolean) {
         sp(context).edit().putBoolean("cmd_enabled_$commandKey", enabled).apply()
+    }
+
+    fun setAllCommandsEnabled(context: Context, commandKeys: List<String>, enabled: Boolean) {
+        val editor = sp(context).edit()
+        for (key in commandKeys) {
+            editor.putBoolean("cmd_enabled_$key", enabled)
+        }
+        editor.apply()
     }
 
     fun themeMode(context: Context): Int = sp(context).getInt(KEY_THEME_MODE, 0) // 0: System, 1: Light, 2: Dark
