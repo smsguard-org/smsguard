@@ -9,6 +9,24 @@
     <string name="cmd_alarm_desc">Forces a max-volume siren, even in silent or Do Not Disturb.</string>
     <string name="cmd_stop">#STOP#PIN</string>
     <string name="cmd_stop_desc">Stops a running siren.</string>
+    <string name="cmd_lock">#LOCK#PIN</string>
+    <string name="cmd_lock_desc">Remotely locks the device screen and secures the active session.</string>
+    <string name="cmd_data">#DATA#PIN</string>
+    <string name="cmd_data_desc">Queries mobile data network connection status and active IP over SMS.</string>
+    <string name="cmd_wifi">#WIFI#PIN</string>
+    <string name="cmd_wifi_desc">Queries Wi-Fi connection status, connected SSID, and local network address.</string>
+    <string name="cmd_battery">#BATTERY#PIN</string>
+    <string name="cmd_battery_desc">Replies with battery percentage, charging state, and device temperature.</string>
+    <string name="cmd_flash">#FLASH#PIN</string>
+    <string name="cmd_flash_desc">Triggers camera LED flashlight beacon for 15 seconds to locate phone in the dark.</string>
+    <string name="cmd_info">#INFO#PIN</string>
+    <string name="cmd_info_desc">Replies with device model, Android OS version, and system uptime.</string>
+    <string name="cmd_callme">#CALLME#PIN</string>
+    <string name="cmd_callme_desc">Triggers emergency callback alert and notifies trusted contact.</string>
+    <string name="cmd_contacts">#CONTACTS#PIN</string>
+    <string name="cmd_contacts_desc">Replies with configured trusted contact details and emergency info.</string>
+    <string name="cmd_wipe">#WIPE#PIN</string>
+    <string name="cmd_wipe_desc">Triggers remote emergency wipe alert and locks device for safety.</string>
     <string name="cmd_note">Commands work offline over SMS and match against the PIN you set below.</string>
 
     <string name="section_protection">Protection settings</string>

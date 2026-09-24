@@ -5,6 +5,19 @@ object SmsGuardCommand {
     const val LOCATE = "LOCATE"
     const val ALARM = "ALARM"
     const val STOP = "STOP"
+    const val LOCK = "LOCK"
+    const val DATA = "DATA"
+    const val WIFI = "WIFI"
+    const val BATTERY = "BATTERY"
+    const val FLASH = "FLASH"
+    const val INFO = "INFO"
+    const val CALLME = "CALLME"
+    const val CONTACTS = "CONTACTS"
+    const val WIPE = "WIPE"
+
+    val ALL_COMMANDS = listOf(
+        LOCATE, ALARM, STOP, LOCK, DATA, WIFI, BATTERY, FLASH, INFO, CALLME, CONTACTS, WIPE
+    )
 
     const val PIN_MIN_LENGTH = 4
     const val PIN_MAX_LENGTH = 8
