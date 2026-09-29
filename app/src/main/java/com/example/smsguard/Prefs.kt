@@ -30,6 +30,7 @@ object Prefs {
     private const val KEY_SERVICE_ENABLED = "service_enabled"
     private const val KEY_SERVICE_START_TIME = "service_start_time"
     private const val KEY_THEME_MODE = "theme_mode"
+    private const val KEY_PERMISSIONS_REQUESTED = "permissions_requested"
 
     const val DEFAULT_PIN = "1234"
     const val DEFAULT_BATTERY_THRESHOLD = 5
@@ -47,6 +48,20 @@ object Prefs {
 
     fun setOnboarded(context: Context, value: Boolean) {
         sp(context).edit().putBoolean(KEY_ONBOARDED, value).apply()
+    }
+
+    /**
+     * True once a runtime permission request has actually been made.
+     *
+     * `shouldShowRequestPermissionRationale` returns false both before the first request and
+     * after a permanent denial, so it cannot distinguish "not asked yet" from "will never be
+     * asked again" on its own.
+     */
+    fun hasRequestedPermissions(context: Context): Boolean =
+        sp(context).getBoolean(KEY_PERMISSIONS_REQUESTED, false)
+
+    fun setHasRequestedPermissions(context: Context, value: Boolean) {
+        sp(context).edit().putBoolean(KEY_PERMISSIONS_REQUESTED, value).apply()
     }
 
     fun pin(context: Context): String = sp(context).getString(KEY_PIN, DEFAULT_PIN) ?: DEFAULT_PIN
