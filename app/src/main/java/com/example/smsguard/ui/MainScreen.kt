@@ -1,7 +1,5 @@
 package com.example.smsguard.ui
 
-import android.Manifest
-import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.fadeIn
@@ -29,7 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -37,6 +35,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.material.icons.filled.ContactPhone
+import com.example.smsguard.PermissionState
 import com.example.smsguard.Prefs
 import com.example.smsguard.ProtectionService
 import com.example.smsguard.SmsGuardCommand
@@ -50,19 +49,15 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Activity : Screen("activity", "Activity", Icons.Default.History)
 }
 
-private val REQUIRED_PERMISSIONS = listOf(
-    Manifest.permission.RECEIVE_SMS,
-    Manifest.permission.SEND_SMS,
-    Manifest.permission.ACCESS_FINE_LOCATION,
-    Manifest.permission.POST_NOTIFICATIONS
-)
-
 @Composable
 fun MainScreen(onThemeChange: (Int) -> Unit) {
     val context = LocalContext.current
     val navController = rememberNavController()
     
     var permissionTrigger by remember { mutableIntStateOf(0) }
+    var lastRequestResult by remember {
+        mutableStateOf<Map<String, Boolean>>(emptyMap())
+    }
     
     // Shared state for settings
     var themeMode by remember { mutableIntStateOf(Prefs.themeMode(context)) }
@@ -75,14 +70,25 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissionTrigger++ }
-
-    val missingPermissions by remember(permissionTrigger) {
-        mutableStateOf(
-            REQUIRED_PERMISSIONS.filter {
-                ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
-            }
+    ) { result ->
+        Prefs.setHasRequestedPermissions(context, true)
+        lastRequestResult = PermissionState.mergeGrants(
+            context,
+            result,
+            PermissionState.allPermissions
         )
+        permissionTrigger++
+    }
+
+    // The dashboard reports a red "System Issue" from this same stale-snapshot pattern; a grant
+    // made in system Settings must clear it as soon as the app comes back to the foreground.
+    LifecycleResumeEffect(context) {
+        permissionTrigger++
+        onPauseOrDispose {}
+    }
+
+    val missingPermissions = remember(permissionTrigger, lastRequestResult) {
+        PermissionState.missing(context, PermissionState.allPermissions)
     }
 
     // Keep the ongoing protection notification in sync with persisted state.
