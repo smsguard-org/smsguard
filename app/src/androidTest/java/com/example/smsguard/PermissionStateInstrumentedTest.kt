@@ -39,6 +39,8 @@ class PermissionStateInstrumentedTest {
     @After
     fun restore() {
         automation.revokeRuntimePermission(context.packageName, Manifest.permission.RECEIVE_SMS)
+        automation.revokeRuntimePermission(context.packageName, Manifest.permission.ACCESS_FINE_LOCATION)
+        automation.revokeRuntimePermission(context.packageName, Manifest.permission.ACCESS_COARSE_LOCATION)
         Prefs.setHasRequestedPermissions(context, hadRequestedBefore)
     }
 
@@ -102,8 +104,53 @@ class PermissionStateInstrumentedTest {
         automation.grantRuntimePermission(context.packageName, Manifest.permission.RECEIVE_SMS)
 
         assertFalse(
-            Manifest.permission.RECEIVE_SMS in
-                PermissionState.missing(context, listOf(Manifest.permission.RECEIVE_SMS))
+            Manifest.permission.RECEIVE_SMS in PermissionState.missing(context)
         )
+    }
+
+    private val locationGroup
+        get() = PermissionState.permissionGroups.single {
+            it.labelRes == R.string.perm_location
+        }
+
+    /**
+     * Reproduces the reported symptom on a real device: granting only the coarse location
+     * permission, which is exactly what the system does when the user picks "Approximate".
+     * The location row must read as granted so onboarding stops nagging.
+     */
+    @Test
+    fun locationGroup_coarseOnlyIsReportedAsGranted() {
+        automation.revokeRuntimePermission(context.packageName, Manifest.permission.ACCESS_FINE_LOCATION)
+        automation.revokeRuntimePermission(context.packageName, Manifest.permission.ACCESS_COARSE_LOCATION)
+        automation.grantRuntimePermission(context.packageName, Manifest.permission.ACCESS_COARSE_LOCATION)
+
+        assertEquals(
+            "Approximate location is enough for the app to work",
+            PermissionStatus.GRANTED,
+            PermissionState.statusOf(context, locationGroup)
+        )
+    }
+
+    @Test
+    fun locationGroup_reportsNotGrantedWhenBothAreRevoked() {
+        automation.revokeRuntimePermission(context.packageName, Manifest.permission.ACCESS_FINE_LOCATION)
+        automation.revokeRuntimePermission(context.packageName, Manifest.permission.ACCESS_COARSE_LOCATION)
+
+        assertEquals(
+            PermissionStatus.DENIED,
+            PermissionState.statusOf(context, locationGroup)
+        )
+    }
+
+    /** Once coarse location is enough, the blocked fine permission must not be re-prompted. */
+    @Test
+    fun missing_leavesTheLocationGroupAloneOnceCoarseIsGranted() {
+        automation.revokeRuntimePermission(context.packageName, Manifest.permission.ACCESS_FINE_LOCATION)
+        automation.revokeRuntimePermission(context.packageName, Manifest.permission.ACCESS_COARSE_LOCATION)
+        automation.grantRuntimePermission(context.packageName, Manifest.permission.ACCESS_COARSE_LOCATION)
+
+        val missing = PermissionState.missing(context)
+
+        assertFalse(Manifest.permission.ACCESS_COARSE_LOCATION in missing)
     }
 }

@@ -52,10 +52,14 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.smsguard.PermissionEntry
+import com.example.smsguard.PermissionState
+import com.example.smsguard.PermissionStatus
 import com.example.smsguard.R
 import com.example.smsguard.ui.components.SectionCard
 import com.example.smsguard.ui.components.SectionHeader
@@ -69,11 +73,15 @@ fun DashboardScreen(
     commandCount: Int,
     alertCount: Int,
     commandHistory: List<String>,
-    missingPermissionsCount: Int,
+    permissionEntries: List<PermissionEntry>,
     onFixPermissions: () -> Unit,
+    onOpenAppSettings: () -> Unit,
     onSeeAllActivity: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val missingCount = permissionEntries.count { it.status != PermissionStatus.GRANTED }
+    val hasPermissionIssue = missingCount > 0
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = modifier.fillMaxSize(),
@@ -119,7 +127,7 @@ fun DashboardScreen(
                 enabled = serviceEnabled,
                 onToggle = onServiceToggle,
                 startTime = serviceStartTime,
-                hasError = missingPermissionsCount > 0
+                hasError = hasPermissionIssue
             )
         }
 
@@ -202,39 +210,112 @@ fun DashboardScreen(
 
         // Permissions Status
         item(span = { GridItemSpan(2) }) {
-            SectionCard(
-                containerColor = if (missingPermissionsCount == 0)
-                    MaterialTheme.colorScheme.surface
-                else MaterialTheme.colorScheme.errorContainer
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "System Permissions",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = if (missingPermissionsCount == 0) "All systems operational"
-                            else "Action required: $missingPermissionsCount permissions missing",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    if (missingPermissionsCount > 0) {
-                        FilledTonalButton(onClick = onFixPermissions) {
-                            Text("Fix")
-                        }
-                    }
-                }
-            }
+            SystemPermissionsCard(
+                permissionEntries = permissionEntries,
+                missingCount = missingCount,
+                onFixPermissions = onFixPermissions,
+                onOpenAppSettings = onOpenAppSettings
+            )
         }
 
         item(span = { GridItemSpan(2) }) {
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun SystemPermissionsCard(
+    permissionEntries: List<PermissionEntry>,
+    missingCount: Int,
+    onFixPermissions: () -> Unit,
+    onOpenAppSettings: () -> Unit
+) {
+    val hasBlocked = permissionEntries.any { it.status == PermissionStatus.BLOCKED }
+    SectionCard(
+        containerColor = if (missingCount == 0)
+            MaterialTheme.colorScheme.surface
+        else MaterialTheme.colorScheme.errorContainer
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.perm_dashboard_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (missingCount == 0) {
+                            stringResource(R.string.perm_dashboard_all_granted)
+                        } else {
+                            pluralStringResource(
+                                R.plurals.perm_dashboard_missing,
+                                missingCount,
+                                missingCount
+                            )
+                        },
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                if (missingCount > 0) {
+                    FilledTonalButton(onClick = onFixPermissions) {
+                        Text(stringResource(R.string.perm_dashboard_fix))
+                    }
+                }
+            }
+
+            // Granted rows stay visible so the list is a real status board rather than a
+            // to-do list; only the non-granted ones are a call to action.
+            permissionEntries.forEachIndexed { index, entry ->
+                if (index > 0) {
+                    HorizontalDivider()
+                }
+                val statusColor = when (entry.status) {
+                    PermissionStatus.GRANTED -> MaterialTheme.colorScheme.primary
+                    PermissionStatus.DENIED -> MaterialTheme.colorScheme.error
+                    PermissionStatus.BLOCKED -> MaterialTheme.colorScheme.tertiary
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(statusColor)
+                    )
+                    Text(
+                        text = stringResource(entry.labelRes),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = stringResource(PermissionState.statusRes(entry.status)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = statusColor
+                    )
+                }
+            }
+
+            if (hasBlocked) {
+                Text(
+                    text = stringResource(R.string.perm_blocked_howto),
+                    style = MaterialTheme.typography.bodySmall
+                )
+                FilledTonalButton(
+                    onClick = onOpenAppSettings,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(R.string.perm_open_settings))
+                }
+            }
         }
     }
 }

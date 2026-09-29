@@ -84,6 +84,13 @@
     <string name="perm_status_granted">Granted</string>
     <string name="perm_status_denied">Not granted</string>
     <string name="perm_status_blocked">Blocked by Android</string>
+    <string name="perm_dashboard_title">System Permissions</string>
+    <string name="perm_dashboard_all_granted">All systems operational</string>
+    <plurals name="perm_dashboard_missing">
+        <item quantity="one">Action required: %1$d permission missing</item>
+        <item quantity="other">Action required: %1$d permissions missing</item>
+    </plurals>
+    <string name="perm_dashboard_fix">Fix</string>
     <string name="perm_try_again">Try again</string>
     <string name="perm_open_settings">Open app settings</string>
     <string name="perm_blocked_title">Android is withholding SMS access</string>

@@ -36,6 +36,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.material.icons.filled.ContactPhone
 import com.example.smsguard.PermissionState
+import com.example.smsguard.PermissionStatus
 import com.example.smsguard.Prefs
 import com.example.smsguard.ProtectionService
 import com.example.smsguard.SmsGuardCommand
@@ -87,8 +88,11 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
         onPauseOrDispose {}
     }
 
-    val missingPermissions = remember(permissionTrigger, lastRequestResult) {
-        PermissionState.missing(context, PermissionState.allPermissions)
+    val permissionEntries = remember(permissionTrigger, lastRequestResult) {
+        PermissionState.entries(context)
+    }
+    val unresolvedPermissions = permissionEntries.filter {
+        it.status != PermissionStatus.GRANTED
     }
 
     // Keep the ongoing protection notification in sync with persisted state.
@@ -145,9 +149,16 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
                     commandCount = Prefs.commandCount(context),
                     alertCount = Prefs.alertCount(context),
                     commandHistory = Prefs.commandHistory(context),
-                    missingPermissionsCount = missingPermissions.size,
+                    permissionEntries = permissionEntries,
                     onFixPermissions = {
-                        permissionLauncher.launch(missingPermissions.toTypedArray())
+                        permissionLauncher.launch(
+                            PermissionState.missing(context).toTypedArray()
+                        )
+                    },
+                    onOpenAppSettings = {
+                        runCatching {
+                            context.startActivity(PermissionState.appSettingsIntent(context))
+                        }
                     },
                     onSeeAllActivity = {
                         navController.navigate(Screen.Activity.route)
