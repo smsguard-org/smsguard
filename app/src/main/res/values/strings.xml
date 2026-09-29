@@ -81,6 +81,15 @@
     <string name="perm_notifications_desc">Show the siren and beacon notifications.</string>
     <string name="grant_permissions_button">Grant permissions</string>
     <string name="permissions_granted_button">Permissions granted</string>
+    <string name="perm_status_granted">Granted</string>
+    <string name="perm_status_denied">Not granted</string>
+    <string name="perm_status_blocked">Blocked by Android</string>
+    <string name="perm_try_again">Try again</string>
+    <string name="perm_open_settings">Open app settings</string>
+    <string name="perm_blocked_title">Android is withholding SMS access</string>
+    <string name="perm_blocked_body">SMSGuard was installed outside the Play Store. Since Android 15, SMS permissions for such installs are blocked by the system and cannot be granted from inside the app.</string>
+    <string name="perm_blocked_howto">Open Settings, choose Apps, select SMSGuard, then open the menu (⋮ or More) and tap Allow restricted settings. Afterwards, in Permissions, set SMS to Allow.</string>
+    <string name="perm_blocked_adb">Support: adb shell cmd appops set com.example.smsguard ACCESS_RESTRICTED_SETTINGS allow</string>
     <string name="onboarding_step_security">Security</string>
     <string name="onboarding_sec_title">Set your security PIN</string>
     <string name="onboarding_sec_subtitle">Commands only work with your PIN. Use 4 to 8 digits.</string>
