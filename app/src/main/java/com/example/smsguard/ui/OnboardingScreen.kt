@@ -1,7 +1,6 @@
 package com.example.smsguard.ui
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -32,6 +31,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -60,18 +62,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import com.example.smsguard.PermissionState
+import com.example.smsguard.PermissionStatus
 import com.example.smsguard.Prefs
 import com.example.smsguard.ProtectionService
 import com.example.smsguard.R
 import com.example.smsguard.SmsGuardCommand
-
-private val ONBOARDING_PERMISSIONS = listOfNotNull(
-    Manifest.permission.RECEIVE_SMS,
-    Manifest.permission.SEND_SMS,
-    Manifest.permission.ACCESS_FINE_LOCATION,
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.POST_NOTIFICATIONS else null
-)
 
 private const val WELCOME_STEP = 0
 private const val PERMISSIONS_STEP = 1
@@ -85,6 +82,9 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     var step by remember { mutableIntStateOf(WELCOME_STEP) }
     
     var permissionTrigger by remember { mutableIntStateOf(0) }
+    var lastRequestResult by remember {
+        mutableStateOf<Map<String, Boolean>>(emptyMap())
+    }
 
     var smsEnabled by remember { mutableStateOf(true) }
     var pin by remember { mutableStateOf("") }
@@ -92,24 +92,57 @@ fun OnboardingScreen(onComplete: () -> Unit) {
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissionTrigger++ }
-
-    val missingPermissions by remember(permissionTrigger) {
-        mutableStateOf(
-            ONBOARDING_PERMISSIONS.filter {
-                ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
-            }.toSet()
+    ) { result ->
+        Prefs.setHasRequestedPermissions(context, true)
+        lastRequestResult = PermissionState.mergeGrants(
+            context,
+            result,
+            PermissionState.allPermissions
         )
+        permissionTrigger++
     }
 
-    val smsGranted = Manifest.permission.RECEIVE_SMS !in missingPermissions && 
-                     Manifest.permission.SEND_SMS !in missingPermissions
-    val locationGranted = Manifest.permission.ACCESS_FINE_LOCATION !in missingPermissions
-    val notificationsGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        Manifest.permission.POST_NOTIFICATIONS !in missingPermissions
-    } else true
+    // Since Android 15 a blocked SMS permission can only be cleared from system Settings, and
+    // that grant never reaches the launcher callback above. Re-reading the OS on every
+    // foreground return is what makes the change visible instead of leaving a stale red row.
+    LifecycleResumeEffect(context) {
+        permissionTrigger++
+        onPauseOrDispose {}
+    }
 
-    val allGranted = smsGranted && locationGranted && notificationsGranted
+    val statuses = remember(permissionTrigger, lastRequestResult) {
+        PermissionState.allPermissions.associateWith { PermissionState.statusOf(context, it) }
+    }
+
+    fun statusOf(permission: String): PermissionStatus =
+        statuses[permission] ?: PermissionStatus.DENIED
+
+    val receiveSms = statusOf(Manifest.permission.RECEIVE_SMS)
+    val sendSms = statusOf(Manifest.permission.SEND_SMS)
+    val locationStatus = PermissionState.aggregate(
+        PermissionState.LOCATION_PERMISSIONS.map { statusOf(it) }
+    )
+    val notificationsStatus = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        statusOf(Manifest.permission.POST_NOTIFICATIONS)
+    } else {
+        PermissionStatus.GRANTED
+    }
+
+    val requiredSatisfied = PermissionState.requiredPermissions.all {
+        statuses[it] == PermissionStatus.GRANTED
+    }
+    val anyBlocked = statuses.values.any { it == PermissionStatus.BLOCKED }
+
+    val requestMissing: () -> Unit = {
+        permissionLauncher.launch(
+            PermissionState.missing(context, PermissionState.allPermissions).toTypedArray()
+        )
+    }
+    val openAppSettings: () -> Unit = {
+        runCatching {
+            context.startActivity(PermissionState.appSettingsIntent(context))
+        }
+    }
 
     val pinValid = SmsGuardCommand.forPin(pin) != null
     val pinMatches = pin == pinConfirm && pin.isNotEmpty()
@@ -158,43 +191,58 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                 onComplete()
                             }
                         )
-                        else -> Row(
+                        else -> Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            TextButton(
-                                onClick = { step-- },
-                                modifier = Modifier.weight(1f)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Text(stringResource(R.string.onboarding_back))
-                            }
-                            if (step == PERMISSIONS_STEP && !allGranted) {
-                                Button(
-                                    onClick = {
-                                        permissionLauncher.launch(missingPermissions.toTypedArray())
-                                    }, 
-                                    modifier = Modifier.weight(1.5f)
+                                TextButton(
+                                    onClick = { step-- },
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    Text(stringResource(R.string.grant_permissions_button))
+                                    Text(stringResource(R.string.onboarding_back))
                                 }
-                            } else {
-                                Button(
-                                    onClick = {
-                                        if (step == SECURITY_STEP) {
-                                            Prefs.setPin(context, pin)
-                                            Prefs.setSmsEnabled(context, smsEnabled)
-                                        }
-                                        step++
-                                    },
-                                    enabled = when (step) {
-                                        SECURITY_STEP -> pinValid && pinMatches
-                                        else -> true
-                                    },
-                                    modifier = Modifier.weight(1.5f)
-                                ) {
-                                    Text(stringResource(R.string.onboarding_continue))
+                                if (step == PERMISSIONS_STEP && !requiredSatisfied) {
+                                    Button(
+                                        onClick = requestMissing,
+                                        modifier = Modifier.weight(1.5f)
+                                    ) {
+                                        Text(
+                                            stringResource(
+                                                if (receiveSms == PermissionStatus.BLOCKED)
+                                                    R.string.perm_try_again
+                                                else
+                                                    R.string.grant_permissions_button
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = {
+                                            if (step == SECURITY_STEP) {
+                                                Prefs.setPin(context, pin)
+                                                Prefs.setSmsEnabled(context, smsEnabled)
+                                            }
+                                            step++
+                                        },
+                                        enabled = when (step) {
+                                            SECURITY_STEP -> pinValid && pinMatches
+                                            else -> true
+                                        },
+                                        modifier = Modifier.weight(1.5f)
+                                    ) {
+                                        Text(stringResource(R.string.onboarding_continue))
+                                    }
+                                }
+                            }
+                            if (step == PERMISSIONS_STEP && anyBlocked) {
+                                TextButton(onClick = openAppSettings) {
+                                    Text(stringResource(R.string.perm_open_settings))
                                 }
                             }
                         }
@@ -228,10 +276,13 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     when (targetStep) {
                         WELCOME_STEP -> WelcomeStep()
                         PERMISSIONS_STEP -> PermissionsStep(
-                            smsGranted = smsGranted,
-                            locationGranted = locationGranted,
-                            notificationsGranted = notificationsGranted,
-                            onRequest = { permissionLauncher.launch(missingPermissions.toTypedArray()) }
+                            receiveSms = receiveSms,
+                            sendSms = sendSms,
+                            locationStatus = locationStatus,
+                            notificationsStatus = notificationsStatus,
+                            anyBlocked = anyBlocked,
+                            onRequest = requestMissing,
+                            onOpenSettings = openAppSettings
                         )
                         SECURITY_STEP -> SecurityStep(
                             pin = pin,
@@ -294,10 +345,13 @@ private fun WelcomeStep() {
 
 @Composable
 private fun PermissionsStep(
-    smsGranted: Boolean,
-    locationGranted: Boolean,
-    notificationsGranted: Boolean,
-    onRequest: () -> Unit
+    receiveSms: PermissionStatus,
+    sendSms: PermissionStatus,
+    locationStatus: PermissionStatus,
+    notificationsStatus: PermissionStatus,
+    anyBlocked: Boolean,
+    onRequest: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     Spacer(Modifier.height(8.dp))
     Text(
@@ -313,30 +367,79 @@ private fun PermissionsStep(
     )
     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
+    if (anyBlocked) {
+        BlockedPermissionCard(onOpenSettings = onOpenSettings)
+    }
+
     PermissionRow(
-        title = "SMS Permission",
-        description = "Detect commands and send automated replies",
-        granted = smsGranted
+        title = stringResource(R.string.perm_receive_sms),
+        description = stringResource(R.string.perm_receive_sms_desc),
+        status = receiveSms
+    )
+    PermissionRow(
+        title = stringResource(R.string.perm_send_sms),
+        description = stringResource(R.string.perm_send_sms_desc),
+        status = sendSms
     )
     PermissionRow(
         title = stringResource(R.string.perm_location),
         description = stringResource(R.string.perm_location_desc),
-        granted = locationGranted
+        status = locationStatus
     )
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         PermissionRow(
             title = stringResource(R.string.perm_notifications),
             description = stringResource(R.string.perm_notifications_desc),
-            granted = notificationsGranted
+            status = notificationsStatus
         )
     }
 
-    if (!(smsGranted && locationGranted && notificationsGranted)) {
+    if (receiveSms != PermissionStatus.GRANTED || sendSms != PermissionStatus.GRANTED) {
         Button(
             onClick = onRequest,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(R.string.grant_permissions_button))
+        }
+    }
+}
+
+@Composable
+private fun BlockedPermissionCard(onOpenSettings: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.perm_blocked_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = stringResource(R.string.perm_blocked_body),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = stringResource(R.string.perm_blocked_howto),
+                style = MaterialTheme.typography.bodySmall
+            )
+            FilledTonalButton(
+                onClick = onOpenSettings,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.perm_open_settings))
+            }
+            Text(
+                text = stringResource(R.string.perm_blocked_adb),
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
@@ -430,8 +533,18 @@ private fun DoneStep(
 private fun PermissionRow(
     title: String,
     description: String,
-    granted: Boolean
+    status: PermissionStatus
 ) {
+    val statusLabel = when (status) {
+        PermissionStatus.GRANTED -> stringResource(R.string.perm_status_granted)
+        PermissionStatus.DENIED -> stringResource(R.string.perm_status_denied)
+        PermissionStatus.BLOCKED -> stringResource(R.string.perm_status_blocked)
+    }
+    val dotColor = when (status) {
+        PermissionStatus.GRANTED -> MaterialTheme.colorScheme.primary
+        PermissionStatus.DENIED -> MaterialTheme.colorScheme.error
+        PermissionStatus.BLOCKED -> MaterialTheme.colorScheme.tertiary
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -448,11 +561,11 @@ private fun PermissionRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-        val dotColor = if (granted) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.error
+            Text(
+                text = statusLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = dotColor
+            )
         }
         Box(
             modifier = Modifier
