@@ -9,14 +9,46 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.annotation.StringRes
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
-/** Whether a runtime permission is satisfied, still refusable, or permanently unavailable. */
+/** Whether a permission is satisfied, still refusable, or permanently unavailable. */
 enum class PermissionStatus {
     GRANTED,
     DENIED,
     BLOCKED
+}
+
+/** How the permissions inside a group combine into a single user-facing state. */
+enum class PermissionMode {
+    /** Every permission in the group must be granted, e.g. receiving and sending SMS. */
+    ALL,
+
+    /**
+     * Any one of them is enough, e.g. fine *or* coarse location. Since Android 12 the user can
+     * pick "Approximate", which grants only the coarse permission, so requiring fine here would
+     * report a permission the app can already use as missing.
+     */
+    ANY
+}
+
+/** One permission as the user perceives it, which may be backed by several raw permissions. */
+data class PermissionGroup(
+    @StringRes val labelRes: Int,
+    @StringRes val descRes: Int,
+    val permissions: List<String>,
+    val mode: PermissionMode,
+    val required: Boolean = false
+)
+
+/** A group paired with its current state. */
+data class PermissionEntry(val group: PermissionGroup, val status: PermissionStatus) {
+    @get:StringRes
+    val labelRes: Int get() = group.labelRes
+
+    @get:StringRes
+    val descRes: Int get() = group.descRes
 }
 
 /**
@@ -30,25 +62,53 @@ enum class PermissionStatus {
  */
 object PermissionState {
 
-    val SMS_PERMISSIONS = listOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.SEND_SMS)
-
     val LOCATION_PERMISSIONS = listOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION
     )
 
-    /** Without this the app cannot see the commands that drive it. */
-    val requiredPermissions = listOf(Manifest.permission.RECEIVE_SMS)
-
-    val optionalPermissions = buildList {
-        add(Manifest.permission.SEND_SMS)
-        add(Manifest.permission.ACCESS_FINE_LOCATION)
+    /** The permissions as the user sees them, in the order they are presented. */
+    val permissionGroups: List<PermissionGroup> = buildList {
+        add(
+            PermissionGroup(
+                labelRes = R.string.perm_receive_sms,
+                descRes = R.string.perm_receive_sms_desc,
+                permissions = listOf(Manifest.permission.RECEIVE_SMS),
+                mode = PermissionMode.ALL,
+                required = true
+            )
+        )
+        add(
+            PermissionGroup(
+                labelRes = R.string.perm_send_sms,
+                descRes = R.string.perm_send_sms_desc,
+                permissions = listOf(Manifest.permission.SEND_SMS),
+                mode = PermissionMode.ALL
+            )
+        )
+        add(
+            PermissionGroup(
+                labelRes = R.string.perm_location,
+                descRes = R.string.perm_location_desc,
+                permissions = LOCATION_PERMISSIONS,
+                mode = PermissionMode.ANY
+            )
+        )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            add(Manifest.permission.POST_NOTIFICATIONS)
+            add(
+                PermissionGroup(
+                    labelRes = R.string.perm_notifications,
+                    descRes = R.string.perm_notifications_desc,
+                    permissions = listOf(Manifest.permission.POST_NOTIFICATIONS),
+                    mode = PermissionMode.ALL
+                )
+            )
         }
     }
 
-    val allPermissions = (requiredPermissions + optionalPermissions).distinct()
+    val allPermissions: List<String> = permissionGroups.flatMap { it.permissions }.distinct()
+
+    val requiredGroups: List<PermissionGroup> = permissionGroups.filter { it.required }
 
     fun isGranted(context: Context, permission: String): Boolean =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
@@ -80,13 +140,29 @@ object PermissionState {
         )
     }
 
-    fun statusOf(context: Context, permissions: List<String>): PermissionStatus =
-        aggregate(permissions.map { statusOf(context, it) })
+    fun statusOf(context: Context, group: PermissionGroup): PermissionStatus {
+        val statuses = group.permissions.map { statusOf(context, it) }
+        return when (group.mode) {
+            PermissionMode.ALL -> aggregateAll(statuses)
+            PermissionMode.ANY -> aggregateAny(statuses)
+        }
+    }
 
-    /** Folds per-permission states into one, letting a block outrank a plain refusal. */
-    fun aggregate(statuses: List<PermissionStatus>): PermissionStatus = when {
+    /** Conjunction: every permission is needed, and any one being blocked blocks the group. */
+    fun aggregateAll(statuses: List<PermissionStatus>): PermissionStatus = when {
         statuses.isEmpty() -> PermissionStatus.GRANTED
         statuses.all { it == PermissionStatus.GRANTED } -> PermissionStatus.GRANTED
+        statuses.any { it == PermissionStatus.BLOCKED } -> PermissionStatus.BLOCKED
+        else -> PermissionStatus.DENIED
+    }
+
+    /**
+     * Disjunction: one grant is enough, so a granted sibling outranks a blocked one. Coarse
+     * location being granted must not be downgraded by a blocked fine location.
+     */
+    fun aggregateAny(statuses: List<PermissionStatus>): PermissionStatus = when {
+        statuses.isEmpty() -> PermissionStatus.DENIED
+        statuses.any { it == PermissionStatus.GRANTED } -> PermissionStatus.GRANTED
         statuses.any { it == PermissionStatus.BLOCKED } -> PermissionStatus.BLOCKED
         else -> PermissionStatus.DENIED
     }
@@ -112,8 +188,33 @@ object PermissionState {
         requested: List<String>
     ): Map<String, Boolean> = mergeGrants(callback, requested) { isGranted(context, it) }
 
+    /** Every group with its live state, granted ones included. */
+    fun entries(context: Context): List<PermissionEntry> =
+        permissionGroups.map { PermissionEntry(it, statusOf(context, it)) }
+
+    fun unresolved(context: Context): List<PermissionEntry> =
+        entries(context).filter { it.status != PermissionStatus.GRANTED }
+
+    /**
+     * Raw permissions still worth prompting for.
+     *
+     * A group that already reads as granted contributes nothing, so a blocked fine location
+     * stops nagging once coarse location is available.
+     */
+    fun missing(context: Context): List<String> =
+        permissionGroups.filter { statusOf(context, it) != PermissionStatus.GRANTED }
+            .flatMap { group -> group.permissions.filter { !isGranted(context, it) } }
+
+    /** Raw-permission variant for callers that track individual permissions rather than groups. */
     fun missing(context: Context, permissions: List<String> = allPermissions): List<String> =
         permissions.filter { !isGranted(context, it) }
+
+    @StringRes
+    fun statusRes(status: PermissionStatus): Int = when (status) {
+        PermissionStatus.GRANTED -> R.string.perm_status_granted
+        PermissionStatus.DENIED -> R.string.perm_status_denied
+        PermissionStatus.BLOCKED -> R.string.perm_status_blocked
+    }
 
     /** Intent for the app's own Settings page, the only place a blocked permission can be cleared. */
     fun appSettingsIntent(context: Context): Intent =

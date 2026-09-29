@@ -1,7 +1,5 @@
 package com.example.smsguard.ui
 
-import android.Manifest
-import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -63,6 +61,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import com.example.smsguard.PermissionEntry
+import com.example.smsguard.PermissionGroup
 import com.example.smsguard.PermissionState
 import com.example.smsguard.PermissionStatus
 import com.example.smsguard.Prefs
@@ -110,32 +110,22 @@ fun OnboardingScreen(onComplete: () -> Unit) {
         onPauseOrDispose {}
     }
 
-    val statuses = remember(permissionTrigger, lastRequestResult) {
-        PermissionState.allPermissions.associateWith { PermissionState.statusOf(context, it) }
+    val entries = remember(permissionTrigger, lastRequestResult) {
+        PermissionState.entries(context)
     }
 
-    fun statusOf(permission: String): PermissionStatus =
-        statuses[permission] ?: PermissionStatus.DENIED
+    fun statusOf(group: PermissionGroup): PermissionStatus =
+        entries.firstOrNull { it.group == group }?.status ?: PermissionStatus.DENIED
 
-    val receiveSms = statusOf(Manifest.permission.RECEIVE_SMS)
-    val sendSms = statusOf(Manifest.permission.SEND_SMS)
-    val locationStatus = PermissionState.aggregate(
-        PermissionState.LOCATION_PERMISSIONS.map { statusOf(it) }
-    )
-    val notificationsStatus = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        statusOf(Manifest.permission.POST_NOTIFICATIONS)
-    } else {
-        PermissionStatus.GRANTED
+    val receiveSms = statusOf(PermissionState.permissionGroups[0])
+    val requiredSatisfied = PermissionState.requiredGroups.all {
+        statusOf(it) == PermissionStatus.GRANTED
     }
-
-    val requiredSatisfied = PermissionState.requiredPermissions.all {
-        statuses[it] == PermissionStatus.GRANTED
-    }
-    val anyBlocked = statuses.values.any { it == PermissionStatus.BLOCKED }
+    val anyBlocked = entries.any { it.status == PermissionStatus.BLOCKED }
 
     val requestMissing: () -> Unit = {
         permissionLauncher.launch(
-            PermissionState.missing(context, PermissionState.allPermissions).toTypedArray()
+            PermissionState.missing(context).toTypedArray()
         )
     }
     val openAppSettings: () -> Unit = {
@@ -276,10 +266,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                     when (targetStep) {
                         WELCOME_STEP -> WelcomeStep()
                         PERMISSIONS_STEP -> PermissionsStep(
-                            receiveSms = receiveSms,
-                            sendSms = sendSms,
-                            locationStatus = locationStatus,
-                            notificationsStatus = notificationsStatus,
+                            entries = entries,
                             anyBlocked = anyBlocked,
                             onRequest = requestMissing,
                             onOpenSettings = openAppSettings
@@ -345,10 +332,7 @@ private fun WelcomeStep() {
 
 @Composable
 private fun PermissionsStep(
-    receiveSms: PermissionStatus,
-    sendSms: PermissionStatus,
-    locationStatus: PermissionStatus,
-    notificationsStatus: PermissionStatus,
+    entries: List<PermissionEntry>,
     anyBlocked: Boolean,
     onRequest: () -> Unit,
     onOpenSettings: () -> Unit
@@ -371,30 +355,15 @@ private fun PermissionsStep(
         BlockedPermissionCard(onOpenSettings = onOpenSettings)
     }
 
-    PermissionRow(
-        title = stringResource(R.string.perm_receive_sms),
-        description = stringResource(R.string.perm_receive_sms_desc),
-        status = receiveSms
-    )
-    PermissionRow(
-        title = stringResource(R.string.perm_send_sms),
-        description = stringResource(R.string.perm_send_sms_desc),
-        status = sendSms
-    )
-    PermissionRow(
-        title = stringResource(R.string.perm_location),
-        description = stringResource(R.string.perm_location_desc),
-        status = locationStatus
-    )
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    entries.forEach { entry ->
         PermissionRow(
-            title = stringResource(R.string.perm_notifications),
-            description = stringResource(R.string.perm_notifications_desc),
-            status = notificationsStatus
+            title = stringResource(entry.labelRes),
+            description = stringResource(entry.descRes),
+            status = entry.status
         )
     }
 
-    if (receiveSms != PermissionStatus.GRANTED || sendSms != PermissionStatus.GRANTED) {
+    if (entries.any { it.status != PermissionStatus.GRANTED }) {
         Button(
             onClick = onRequest,
             modifier = Modifier.fillMaxWidth()
