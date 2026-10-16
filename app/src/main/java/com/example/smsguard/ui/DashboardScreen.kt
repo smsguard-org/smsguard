@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -77,6 +78,7 @@ fun DashboardScreen(
     serviceStartTime: Long,
     commandCount: Int,
     alertCount: Int,
+    suspiciousCount: Int,
     commandHistory: List<String>,
     permissionEntries: List<PermissionEntry>,
     onFixPermissions: () -> Unit,
@@ -159,6 +161,16 @@ fun DashboardScreen(
                 value = commandCount.toString(),
                 icon = Icons.Default.Sms,
                 containerColor = MaterialTheme.colorScheme.surface
+            )
+        }
+        item {
+            StatCard(
+                title = "Untrusted Attempts",
+                value = suspiciousCount.toString(),
+                icon = Icons.Default.WarningAmber,
+                containerColor = if (suspiciousCount > 0)
+                    MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
+                else MaterialTheme.colorScheme.surface
             )
         }
 

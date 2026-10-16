@@ -179,6 +179,7 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
                     serviceStartTime = Prefs.serviceStartTime(context),
                     commandCount = Prefs.commandCount(context),
                     alertCount = Prefs.alertCount(context),
+                    suspiciousCount = Prefs.suspiciousCount(context),
                     commandHistory = Prefs.commandHistory(context),
                     permissionEntries = permissionEntries,
                     onFixPermissions = {
