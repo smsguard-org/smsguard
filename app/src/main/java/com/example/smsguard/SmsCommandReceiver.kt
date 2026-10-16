@@ -17,7 +17,7 @@ import android.os.SystemClock
 import android.provider.Telephony
 import java.util.Locale
 
-/** High-priority receiver that runs PIN-authenticated commands from incoming SMS. */
+/** High-priority receiver that runs PIN-authenticated commands sent from trusted contacts. */
 class SmsCommandReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -28,12 +28,20 @@ class SmsCommandReceiver : BroadcastReceiver() {
         val pin = Prefs.pin(context)
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
         for (message in messages) {
-            val from = message.originatingAddress
+            val from = message.originatingAddress ?: continue
             val body = (message.messageBody ?: "").trim().uppercase(Locale.US)
-            val match = COMMAND_PATTERN.find(body) ?: return
+            val match = COMMAND_PATTERN.find(body) ?: continue
             val command = match.groupValues[1]
             val commandPin = match.groupValues[2]
-            if (commandPin != pin || from == null) return
+
+            // Only numbers saved as trusted contacts are allowed to trigger anything. Anyone
+            // else is logged for the user to review and then ignored without a reply.
+            if (!Prefs.isTrustedNumber(context, from)) {
+                Prefs.recordSuspiciousCommand(context, from, command)
+                continue
+            }
+
+            if (commandPin != pin) continue
 
             if (!Prefs.isCommandEnabled(context, command)) {
                 SmsSender.send(
@@ -41,7 +49,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
                     from,
                     "SMSGuard: Command #$command is disabled on this device."
                 )
-                return
+                continue
             }
 
             Prefs.incrementCommandCount(context, command)
