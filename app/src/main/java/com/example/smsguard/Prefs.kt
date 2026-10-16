@@ -32,6 +32,7 @@ object Prefs {
     private const val KEY_SIREN_ACTIVE = "siren_active"
     private const val KEY_THEME_MODE = "theme_mode"
     private const val KEY_PERMISSIONS_REQUESTED = "permissions_requested"
+    private const val KEY_SUSPICIOUS_NUMBERS = "suspicious_numbers"
 
     const val DEFAULT_PIN = "1234"
     const val DEFAULT_BATTERY_THRESHOLD = 5
@@ -73,6 +74,9 @@ object Prefs {
 
     private const val KEY_CONTACTS_SET = "trusted_contacts_set"
 
+    /** Stable id so the legacy single-contact fallback can be removed like any other contact. */
+    private const val LEGACY_CONTACT_ID = "legacy"
+
     fun trustedContact(context: Context): String =
         sp(context).getString(KEY_TRUSTED_CONTACT, "").orEmpty()
 
@@ -96,7 +100,12 @@ object Prefs {
         if (list.isEmpty()) {
             val single = trustedContact(context)
             if (single.isNotBlank()) {
-                val legacy = TrustedContact(name = "Emergency Contact", phoneNumber = single, isPrimary = true)
+                val legacy = TrustedContact(
+                    id = LEGACY_CONTACT_ID,
+                    name = "Emergency Contact",
+                    phoneNumber = single,
+                    isPrimary = true
+                )
                 return listOf(legacy)
             }
         }
@@ -105,12 +114,18 @@ object Prefs {
 
     fun saveTrustedContacts(context: Context, contacts: List<TrustedContact>) {
         val set = contacts.map { "${it.id}|${it.name}|${it.phoneNumber}|${it.isPrimary}" }.toSet()
-        sp(context).edit().putStringSet(KEY_CONTACTS_SET, set).apply()
-        
+        val editor = sp(context).edit().putStringSet(KEY_CONTACTS_SET, set)
+
+        // Keep the legacy single-contact key in sync. Clearing it when the list is emptied is
+        // important: otherwise the old number would keep authorizing commands through the
+        // legacy fallback in [trustedContactsList].
         val primary = contacts.firstOrNull { it.isPrimary } ?: contacts.firstOrNull()
         if (primary != null) {
-            setTrustedContact(context, primary.phoneNumber)
+            editor.putString(KEY_TRUSTED_CONTACT, primary.phoneNumber)
+        } else {
+            editor.remove(KEY_TRUSTED_CONTACT)
         }
+        editor.apply()
     }
 
     fun addTrustedContact(context: Context, name: String, phoneNumber: String, isPrimary: Boolean = false) {
@@ -138,6 +153,59 @@ object Prefs {
             contact.copy(isPrimary = contact.id == contactId)
         }
         saveTrustedContacts(context, current)
+    }
+
+    /**
+     * Whether [phoneNumber] may trigger a command.
+     *
+     * Matching is format-tolerant (see [PhoneNumbers]) so a contact saved as "+1 555…" still
+     * authorizes the same sender arriving as "1555…".
+     */
+    fun isTrustedNumber(context: Context, phoneNumber: String): Boolean =
+        trustedContactsList(context).any { PhoneNumbers.matches(it.phoneNumber, phoneNumber) }
+
+    // --- Suspicious (untrusted) senders -----------------------------------------------------
+
+    /** Untrusted numbers that recently texted a command, newest first. */
+    fun suspiciousNumbers(context: Context): List<SuspiciousNumber> {
+        val set = sp(context).getStringSet(KEY_SUSPICIOUS_NUMBERS, emptySet()) ?: emptySet()
+        return set.mapNotNull { SuspiciousNumber.decode(it) }
+            .sortedByDescending { it.timestamp }
+    }
+
+    fun suspiciousCount(context: Context): Int = suspiciousNumbers(context).sumOf { it.count }
+
+    /**
+     * Records a command attempt from an untrusted sender. Repeated attempts from the same number
+     * update one row instead of appending duplicates.
+     */
+    fun recordSuspiciousCommand(
+        context: Context,
+        phoneNumber: String,
+        command: String,
+        timestamp: Long = System.currentTimeMillis()
+    ) {
+        val merged = SuspiciousNumber.merge(
+            existing = suspiciousNumbers(context),
+            phoneNumber = phoneNumber,
+            command = command,
+            timestamp = timestamp
+        )
+        sp(context).edit()
+            .putStringSet(KEY_SUSPICIOUS_NUMBERS, merged.map { SuspiciousNumber.encode(it) }.toSet())
+            .apply()
+    }
+
+    fun removeSuspiciousNumber(context: Context, phoneNumber: String) {
+        val remaining = suspiciousNumbers(context)
+            .filterNot { PhoneNumbers.matches(it.phoneNumber, phoneNumber) }
+        sp(context).edit()
+            .putStringSet(KEY_SUSPICIOUS_NUMBERS, remaining.map { SuspiciousNumber.encode(it) }.toSet())
+            .apply()
+    }
+
+    fun clearSuspiciousNumbers(context: Context) {
+        sp(context).edit().remove(KEY_SUSPICIOUS_NUMBERS).apply()
     }
 
     fun batteryBeaconEnabled(context: Context): Boolean =
