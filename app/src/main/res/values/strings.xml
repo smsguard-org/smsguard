@@ -56,6 +56,11 @@
     <string name="siren_channel">SMSGuard siren</string>
     <string name="siren_notification">Triggered SMS command notification</string>
     <string name="siren_stop">Stop siren</string>
+    <string name="siren_control_title">Emergency siren</string>
+    <string name="siren_control_active">Siren is sounding</string>
+    <string name="siren_control_active_desc">Tap below to silence the alarm right now.</string>
+    <string name="siren_control_idle">No siren playing</string>
+    <string name="siren_control_idle_desc">An #ALARM#PIN siren will show up here so you can stop it without sending #STOP#PIN.</string>
 
     <string name="onboarding_welcome_title">Welcome to SMSGuard</string>
     <string name="onboarding_welcome_subtitle">Your offline SMS anti-theft and location trigger. Protect your phone even without an internet connection.</string>

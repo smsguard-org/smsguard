@@ -15,7 +15,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Telephony
-import androidx.core.content.ContextCompat
 import java.util.Locale
 
 /** High-priority receiver that runs PIN-authenticated commands from incoming SMS. */
@@ -93,14 +92,12 @@ class SmsCommandReceiver : BroadcastReceiver() {
 
     private fun handleAlarm(context: Context, from: String) {
         Prefs.incrementAlertCount(context)
-        val intent = Intent(context, SirenService::class.java)
-            .setAction(SirenServiceActions.START)
-        ContextCompat.startForegroundService(context, intent)
+        SirenController.start(context)
         SmsSender.send(context, from, "SMSGuard: Alarm started.")
     }
 
     private fun handleStop(context: Context, from: String) {
-        context.stopService(Intent(context, SirenService::class.java))
+        SirenController.stop(context)
         SmsSender.send(context, from, "SMSGuard: Alarm stopped.")
     }
 

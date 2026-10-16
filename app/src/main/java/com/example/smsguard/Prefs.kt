@@ -29,6 +29,7 @@ object Prefs {
     private const val KEY_COMMAND_HISTORY = "command_history"
     private const val KEY_SERVICE_ENABLED = "service_enabled"
     private const val KEY_SERVICE_START_TIME = "service_start_time"
+    private const val KEY_SIREN_ACTIVE = "siren_active"
     private const val KEY_THEME_MODE = "theme_mode"
     private const val KEY_PERMISSIONS_REQUESTED = "permissions_requested"
 
@@ -217,6 +218,16 @@ object Prefs {
     }
 
     fun serviceStartTime(context: Context): Long = sp(context).getLong(KEY_SERVICE_START_TIME, 0L)
+
+    /**
+     * True while [SirenService] is sounding, so the UI can offer an in-app "stop" instead of
+     * waiting for the user to text the #STOP#PIN command back to the phone.
+     */
+    fun sirenActive(context: Context): Boolean = sp(context).getBoolean(KEY_SIREN_ACTIVE, false)
+
+    fun setSirenActive(context: Context, active: Boolean) {
+        sp(context).edit().putBoolean(KEY_SIREN_ACTIVE, active).apply()
+    }
 
     fun isCommandEnabled(context: Context, commandKey: String): Boolean =
         sp(context).getBoolean("cmd_enabled_$commandKey", false)

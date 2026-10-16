@@ -17,7 +17,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-// import androidx.compose.runtime.LaunchedEffect // TODO: re-enable with the protection notification
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -37,8 +37,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.compose.material.icons.filled.ContactPhone
 import com.example.smsguard.PermissionState
 import com.example.smsguard.Prefs
+import com.example.smsguard.SirenController
 // import com.example.smsguard.ProtectionService // TODO: re-enable with the protection notification
 import com.example.smsguard.SmsGuardCommand
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
@@ -48,6 +50,8 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
     object Activity : Screen("activity", "Activity", Icons.Default.History)
 }
+
+private const val SIREN_POLL_INTERVAL_MS = 1000L
 
 @Composable
 fun MainScreen(onThemeChange: (Int) -> Unit) {
@@ -67,6 +71,7 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
     var beaconEnabled by remember { mutableStateOf(Prefs.batteryBeaconEnabled(context)) }
     var contact by remember { mutableStateOf(Prefs.trustedContact(context)) }
     var threshold by remember { mutableFloatStateOf(Prefs.batteryThreshold(context).toFloat()) }
+    var sirenActive by remember { mutableStateOf(Prefs.sirenActive(context)) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -84,7 +89,17 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
     // made in system Settings must clear it as soon as the app comes back to the foreground.
     LifecycleResumeEffect(context) {
         permissionTrigger++
+        sirenActive = Prefs.sirenActive(context)
         onPauseOrDispose {}
+    }
+
+    // A siren can be started by a #ALARM#PIN SMS while this screen is already open, so poll the
+    // persisted flag to surface the in-app stop button without needing a round trip.
+    LaunchedEffect(Unit) {
+        while (true) {
+            sirenActive = Prefs.sirenActive(context)
+            delay(SIREN_POLL_INTERVAL_MS)
+        }
     }
 
     val permissionEntries = remember(permissionTrigger, lastRequestResult) {
@@ -143,6 +158,11 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
                         // TODO: re-enable the ongoing protection notification.
                         // if (it) ProtectionService.start(context)
                         // else ProtectionService.stop(context)
+                    },
+                    sirenActive = sirenActive,
+                    onStopSiren = {
+                        SirenController.stop(context)
+                        sirenActive = false
                     },
                     serviceStartTime = Prefs.serviceStartTime(context),
                     commandCount = Prefs.commandCount(context),

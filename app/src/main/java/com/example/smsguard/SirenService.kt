@@ -34,6 +34,7 @@ class SirenService : Service() {
             startForeground(NotificationHelper.NOTIF_SIREN, NotificationHelper.sirenNotification(this))
         }
         startSiren()
+        Prefs.setSirenActive(this, true)
         return START_NOT_STICKY
     }
 
@@ -63,6 +64,7 @@ class SirenService : Service() {
     override fun onDestroy() {
         player?.release()
         player = null
+        Prefs.setSirenActive(this, false)
         super.onDestroy()
     }
 

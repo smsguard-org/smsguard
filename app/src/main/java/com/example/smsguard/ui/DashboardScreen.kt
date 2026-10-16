@@ -27,6 +27,9 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sms
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -69,6 +72,8 @@ import kotlinx.coroutines.delay
 fun DashboardScreen(
     serviceEnabled: Boolean,
     onServiceToggle: (Boolean) -> Unit,
+    sirenActive: Boolean,
+    onStopSiren: () -> Unit,
     serviceStartTime: Long,
     commandCount: Int,
     alertCount: Int,
@@ -128,6 +133,14 @@ fun DashboardScreen(
                 onToggle = onServiceToggle,
                 startTime = serviceStartTime,
                 hasError = hasPermissionIssue
+            )
+        }
+
+        // Emergency Siren control
+        item(span = { GridItemSpan(2) }) {
+            SirenControlCard(
+                sirenActive = sirenActive,
+                onStopSiren = onStopSiren
             )
         }
 
@@ -315,6 +328,108 @@ private fun SystemPermissionsCard(
                 ) {
                     Text(stringResource(R.string.perm_open_settings))
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SirenControlCard(
+    sirenActive: Boolean,
+    onStopSiren: () -> Unit
+) {
+    val contentColor = if (sirenActive) MaterialTheme.colorScheme.onErrorContainer
+        else MaterialTheme.colorScheme.onSurface
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(
+            1.dp,
+            if (sirenActive) MaterialTheme.colorScheme.error
+            else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = if (sirenActive) MaterialTheme.colorScheme.errorContainer
+            else MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (sirenActive) 4.dp else 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (sirenActive) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.NotificationsActive,
+                        contentDescription = null,
+                        tint = if (sirenActive) MaterialTheme.colorScheme.onError
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.siren_control_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = contentColor
+                    )
+                    Text(
+                        text = stringResource(
+                            if (sirenActive) R.string.siren_control_active
+                            else R.string.siren_control_idle
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (sirenActive) FontWeight.SemiBold else FontWeight.Normal,
+                        color = contentColor
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(
+                    if (sirenActive) R.string.siren_control_active_desc
+                    else R.string.siren_control_idle_desc
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (sirenActive) contentColor else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Button(
+                onClick = onStopSiren,
+                enabled = sirenActive,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Stop,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.size(8.dp))
+                Text(
+                    text = stringResource(R.string.siren_stop),
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
