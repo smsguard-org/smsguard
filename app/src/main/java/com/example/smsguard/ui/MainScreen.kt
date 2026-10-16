@@ -35,9 +35,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.material.icons.filled.ContactPhone
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import com.example.smsguard.PermissionState
 import com.example.smsguard.Prefs
 import com.example.smsguard.SirenController
+import com.example.smsguard.AccessibilityPermission
 // import com.example.smsguard.ProtectionService // TODO: re-enable with the protection notification
 import com.example.smsguard.SmsGuardCommand
 import kotlinx.coroutines.delay
@@ -72,6 +75,7 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
     var contact by remember { mutableStateOf(Prefs.trustedContact(context)) }
     var threshold by remember { mutableFloatStateOf(Prefs.batteryThreshold(context).toFloat()) }
     var sirenActive by remember { mutableStateOf(Prefs.sirenActive(context)) }
+    var showScreenLockPermission by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -104,6 +108,14 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
 
     val permissionEntries = remember(permissionTrigger, lastRequestResult) {
         PermissionState.entries(context)
+    }
+
+    // Show this once whenever protection first becomes active without the optional screen-lock
+    // capability, including immediately after the onboarding flow enables protection.
+    LaunchedEffect(serviceEnabled) {
+        if (serviceEnabled && !AccessibilityPermission.isScreenLockEnabled(context)) {
+            showScreenLockPermission = true
+        }
     }
 
     // TODO: re-enable the ongoing "protection active" notification once we want a persistent bar.
@@ -237,4 +249,38 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
             }
         }
     }
+
+    if (showScreenLockPermission) {
+        ScreenLockPermissionDialog(onDismiss = { showScreenLockPermission = false })
+    }
+}
+
+@Composable
+internal fun ScreenLockPermissionDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("🔒 Enable Screen Lock Permission") },
+        text = {
+            Text(
+                "Required for Device Security\n\n" +
+                    "To allow SMSGuard to securely lock your device screen, enable its Accessibility Service. " +
+                    "This lets the authenticated remote lock command protect your device when you step away.\n\n" +
+                    "What to do next:\n" +
+                    "1. Tap Go to Settings.\n" +
+                    "2. Tap Downloaded Apps or Installed Services.\n" +
+                    "3. Select ${context.getString(com.example.smsguard.R.string.app_name)}.\n" +
+                    "4. Turn the toggle on."
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onDismiss()
+                runCatching { context.startActivity(AccessibilityPermission.settingsIntent()) }
+            }) { Text("Go to Settings") }
+        }
+    )
 }

@@ -69,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.smsguard.Prefs
 import com.example.smsguard.SmsGuardCommand
+import com.example.smsguard.AccessibilityPermission
 
 enum class CommandCategory(val label: String) {
     ALL("All"),
@@ -203,6 +204,7 @@ fun CommandsScreen(modifier: Modifier = Modifier) {
 
     var selectedCategory by remember { mutableStateOf(CommandCategory.ALL) }
     var searchQuery by remember { mutableStateOf("") }
+    var showScreenLockPermission by remember { mutableStateOf(false) }
 
     val filteredCommands = remember(selectedCategory, searchQuery, enabledStates.size) {
         allCommands.filter { cmd ->
@@ -268,10 +270,16 @@ fun CommandsScreen(modifier: Modifier = Modifier) {
                             if (activeCount < allCommands.size) {
                                 Button(
                                     onClick = {
+                                        val screenLockAvailable =
+                                            AccessibilityPermission.isScreenLockEnabled(context)
                                         allCommands.forEach { cmd ->
-                                            enabledStates[cmd.key] = true
+                                            val enabled = cmd.key != SmsGuardCommand.LOCK || screenLockAvailable
+                                            enabledStates[cmd.key] = enabled
+                                            Prefs.setCommandEnabled(context, cmd.key, enabled)
                                         }
-                                        Prefs.setAllCommandsEnabled(context, allCommands.map { it.key }, true)
+                                        if (!screenLockAvailable) {
+                                            showScreenLockPermission = true
+                                        }
                                     },
                                     shape = RoundedCornerShape(12.dp),
                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
@@ -358,8 +366,17 @@ fun CommandsScreen(modifier: Modifier = Modifier) {
                     command = command,
                     isEnabled = isEnabled,
                     onToggleChanged = { newState ->
-                        enabledStates[command.key] = newState
-                        Prefs.setCommandEnabled(context, command.key, newState)
+                        if (command.key == SmsGuardCommand.LOCK && newState &&
+                            !AccessibilityPermission.isScreenLockEnabled(context)
+                        ) {
+                            // Do not enable a command that cannot lock the device yet.
+                            enabledStates[command.key] = false
+                            Prefs.setCommandEnabled(context, command.key, false)
+                            showScreenLockPermission = true
+                        } else {
+                            enabledStates[command.key] = newState
+                            Prefs.setCommandEnabled(context, command.key, newState)
+                        }
                     }
                 )
             }
@@ -393,6 +410,10 @@ fun CommandsScreen(modifier: Modifier = Modifier) {
                 }
             }
         }
+    }
+
+    if (showScreenLockPermission) {
+        ScreenLockPermissionDialog(onDismiss = { showScreenLockPermission = false })
     }
 }
 

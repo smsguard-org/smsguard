@@ -55,6 +55,7 @@
 
     <string name="siren_channel">SMSGuard siren</string>
     <string name="siren_notification">Triggered SMS command notification</string>
+    <string name="screen_lock_accessibility_description">Allows SMSGuard to lock this device after an authenticated remote lock command.</string>
     <string name="siren_stop">Stop siren</string>
     <string name="siren_control_title">Emergency siren</string>
     <string name="siren_control_active">Siren is sounding</string>

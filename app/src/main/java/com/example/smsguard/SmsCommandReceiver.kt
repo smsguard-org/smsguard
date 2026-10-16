@@ -102,7 +102,14 @@ class SmsCommandReceiver : BroadcastReceiver() {
     }
 
     private fun handleLock(context: Context, from: String) {
-        SmsSender.send(context, from, "SMSGuard Security:\nDevice screen lock triggered and active session secured.")
+        val locked = AccessibilityPermission.isScreenLockEnabled(context) &&
+            ScreenLockAccessibilityService.lockDevice()
+        val reply = if (locked) {
+            "SMSGuard Security:\nDevice screen lock triggered and active session secured."
+        } else {
+            "SMSGuard: Screen lock is unavailable. Open SMSGuard and enable the Screen Lock Accessibility Service."
+        }
+        SmsSender.send(context, from, reply)
     }
 
     @SuppressLint("MissingPermission")
