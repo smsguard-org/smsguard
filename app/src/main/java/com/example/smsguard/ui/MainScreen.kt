@@ -17,7 +17,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+// import androidx.compose.runtime.LaunchedEffect // TODO: re-enable with the protection notification
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -36,9 +36,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.material.icons.filled.ContactPhone
 import com.example.smsguard.PermissionState
-import com.example.smsguard.PermissionStatus
 import com.example.smsguard.Prefs
-import com.example.smsguard.ProtectionService
+// import com.example.smsguard.ProtectionService // TODO: re-enable with the protection notification
 import com.example.smsguard.SmsGuardCommand
 import kotlin.math.roundToInt
 
@@ -91,15 +90,14 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
     val permissionEntries = remember(permissionTrigger, lastRequestResult) {
         PermissionState.entries(context)
     }
-    val unresolvedPermissions = permissionEntries.filter {
-        it.status != PermissionStatus.GRANTED
-    }
 
-    // Keep the ongoing protection notification in sync with persisted state.
-    LaunchedEffect(serviceEnabled) {
-        if (serviceEnabled) ProtectionService.start(context)
-        else ProtectionService.stop(context)
-    }
+    // TODO: re-enable the ongoing "protection active" notification once we want a persistent bar.
+    // The foreground service only drives that notification; SMS protection itself runs from the
+    // manifest-registered SmsCommandReceiver, so leaving this off does not weaken protection.
+    // LaunchedEffect(serviceEnabled) {
+    //     if (serviceEnabled) ProtectionService.start(context)
+    //     else ProtectionService.stop(context)
+    // }
 
     Scaffold(
         bottomBar = {
@@ -142,8 +140,9 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
                     onServiceToggle = {
                         serviceEnabled = it
                         Prefs.setServiceEnabled(context, it)
-                        if (it) ProtectionService.start(context)
-                        else ProtectionService.stop(context)
+                        // TODO: re-enable the ongoing protection notification.
+                        // if (it) ProtectionService.start(context)
+                        // else ProtectionService.stop(context)
                     },
                     serviceStartTime = Prefs.serviceStartTime(context),
                     commandCount = Prefs.commandCount(context),
