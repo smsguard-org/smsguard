@@ -3,90 +3,50 @@ package com.example.smsguard
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ServiceInfo
-import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
-import androidx.core.content.ContextCompat
 
-/** Foreground service keeping the ongoing "protection active" notification with a live timer. */
+/** Background service that watches for SIM changes while Protection Mode is running. */
 class ProtectionService : Service() {
 
-    private val handler = Handler(Looper.getMainLooper())
     private var simMonitor: SimChangeMonitor? = null
-
-    private val ticker = object : Runnable {
-        override fun run() {
-            if (!Prefs.serviceEnabled(this@ProtectionService)) {
-                stopSelf()
-                return
-            }
-            val elapsed = elapsedMillis()
-            NotificationHelper.updateProtection(this@ProtectionService, elapsed)
-            handler.postDelayed(this, TICK_INTERVAL_MS)
-        }
-    }
 
     override fun onCreate() {
         super.onCreate()
-        NotificationHelper.createChannels(this)
+        // Older versions kept this service in the foreground with an ongoing status notification.
+        // Clear any leftover notification now that protection runs silently in the background.
+        NotificationHelper.cancelProtection(this)
         simMonitor = SimChangeMonitor(this).also { it.start() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (!Prefs.serviceEnabled(this)) {
-            if (intent != null) {
-                startAsForeground()
-                stopSelf()
-            }
+            stopSelf()
             return START_NOT_STICKY
         }
         // A user may grant Phone and SIM status while this service is already running.
         // Retrying here makes the monitor start without requiring protection to be toggled off.
         simMonitor?.start()
-        startAsForeground()
-        handler.removeCallbacks(ticker)
-        handler.post(ticker)
         return START_STICKY
     }
 
-    private fun elapsedMillis(): Long {
-        val start = Prefs.serviceStartTime(this)
-        return if (start > 0) (System.currentTimeMillis() - start).coerceAtLeast(0L) else 0L
-    }
-
-    private fun startAsForeground() {
-        val notification = NotificationHelper.protectionNotification(this, elapsedMillis())
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                NotificationHelper.NOTIF_PROTECTION,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
-            )
-        } else {
-            startForeground(NotificationHelper.NOTIF_PROTECTION, notification)
-        }
-    }
-
     override fun onDestroy() {
-        handler.removeCallbacks(ticker)
         simMonitor?.stop()
         simMonitor = null
-        NotificationHelper.cancelProtection(this)
         super.onDestroy()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
-        private const val TICK_INTERVAL_MS = 1000L
-
         fun start(context: Context) {
-            ContextCompat.startForegroundService(
-                context.applicationContext,
-                Intent(context.applicationContext, ProtectionService::class.java)
-            )
+            // Protection runs as a plain background service with no notification. Android may
+            // reject this while the app is in the background, so ignore that case; protection
+            // starts again the next time the app comes to the foreground.
+            runCatching {
+                context.applicationContext.startService(
+                    Intent(context.applicationContext, ProtectionService::class.java)
+                )
+            }
         }
 
         fun stop(context: Context) {

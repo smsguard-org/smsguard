@@ -119,8 +119,7 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
         }
     }
 
-    // SIM changes are observed by the foreground protection service. The persistent notification
-    // is required so Android may keep the observer alive after the app leaves the screen.
+    // SIM changes are observed by the background protection service while protection is enabled.
     LaunchedEffect(serviceEnabled) {
         if (serviceEnabled) ProtectionService.start(context)
         else ProtectionService.stop(context)
