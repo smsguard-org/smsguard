@@ -23,18 +23,27 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ImportContacts
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -59,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.example.smsguard.PermissionEntry
@@ -69,12 +79,15 @@ import com.example.smsguard.Prefs
 import com.example.smsguard.ProtectionService
 import com.example.smsguard.R
 import com.example.smsguard.SmsGuardCommand
+import com.example.smsguard.TrustedContact
+import com.example.smsguard.ui.components.rememberContactImporter
 
 private const val WELCOME_STEP = 0
 private const val PERMISSIONS_STEP = 1
-private const val SECURITY_STEP = 2
-private const val DONE_STEP = 3
-private const val TOTAL_STEPS = 4
+private const val CONTACT_STEP = 2
+private const val SECURITY_STEP = 3
+private const val DONE_STEP = 4
+private const val TOTAL_STEPS = 5
 
 @Composable
 fun OnboardingScreen(onComplete: () -> Unit) {
@@ -89,6 +102,28 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     var smsEnabled by remember { mutableStateOf(true) }
     var pin by remember { mutableStateOf("") }
     var pinConfirm by remember { mutableStateOf("") }
+
+    // Trusted contacts captured during onboarding. Persisted as they are added so the list and
+    // the Continue-enablement stay in sync with storage.
+    var contactsList by remember { mutableStateOf(Prefs.trustedContactsList(context)) }
+    var newContactName by remember { mutableStateOf("") }
+    var newContactPhone by remember { mutableStateOf("") }
+
+    fun refreshContacts() {
+        contactsList = Prefs.trustedContactsList(context)
+    }
+
+    // Same phone-book picker as the Contacts tab: requests contacts access, then lists and
+    // searches the address book before adding the chosen number as a trusted contact.
+    val importContact = rememberContactImporter { contact ->
+        Prefs.addTrustedContact(
+            context,
+            name = contact.name,
+            phoneNumber = contact.number,
+            isPrimary = contactsList.isEmpty()
+        )
+        refreshContacts()
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -222,6 +257,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                                         },
                                         enabled = when (step) {
                                             SECURITY_STEP -> pinValid && pinMatches
+                                            CONTACT_STEP -> contactsList.isNotEmpty()
                                             else -> true
                                         },
                                         modifier = Modifier.weight(1.5f)
@@ -271,6 +307,30 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             onRequest = requestMissing,
                             onOpenSettings = openAppSettings
                         )
+                        CONTACT_STEP -> ContactStep(
+                            contacts = contactsList,
+                            name = newContactName,
+                            onNameChange = { newContactName = it },
+                            phone = newContactPhone,
+                            onPhoneChange = { newContactPhone = it },
+                            canAdd = newContactName.isNotBlank() && newContactPhone.isNotBlank(),
+                            onAdd = {
+                                Prefs.addTrustedContact(
+                                    context,
+                                    name = newContactName.trim(),
+                                    phoneNumber = newContactPhone.trim(),
+                                    isPrimary = contactsList.isEmpty()
+                                )
+                                newContactName = ""
+                                newContactPhone = ""
+                                refreshContacts()
+                            },
+                            onImport = importContact,
+                            onRemove = { contact ->
+                                Prefs.removeTrustedContact(context, contact.id)
+                                refreshContacts()
+                            }
+                        )
                         SECURITY_STEP -> SecurityStep(
                             pin = pin,
                             onPinChange = { value ->
@@ -284,7 +344,8 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             pinMatches = pinMatches
                         )
                         DONE_STEP -> DoneStep(
-                            smsEnabled = smsEnabled
+                            smsEnabled = smsEnabled,
+                            trustedContactCount = contactsList.size
                         )
                     }
                     Spacer(Modifier.height(16.dp))
@@ -414,6 +475,154 @@ private fun BlockedPermissionCard(onOpenSettings: () -> Unit) {
 }
 
 @Composable
+private fun ContactStep(
+    contacts: List<TrustedContact>,
+    name: String,
+    onNameChange: (String) -> Unit,
+    phone: String,
+    onPhoneChange: (String) -> Unit,
+    canAdd: Boolean,
+    onAdd: () -> Unit,
+    onImport: () -> Unit,
+    onRemove: (TrustedContact) -> Unit
+) {
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = stringResource(R.string.onboarding_contact_title),
+        style = MaterialTheme.typography.headlineMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary
+    )
+    Text(
+        text = stringResource(R.string.onboarding_contact_subtitle),
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+
+    TextField(
+        value = name,
+        onValueChange = onNameChange,
+        label = { Text(stringResource(R.string.onboarding_contact_name_label)) },
+        placeholder = { Text(stringResource(R.string.onboarding_contact_name_hint)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    TextField(
+        value = phone,
+        onValueChange = onPhoneChange,
+        label = { Text(stringResource(R.string.onboarding_contact_phone_label)) },
+        placeholder = { Text(stringResource(R.string.onboarding_contact_phone_hint)) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Button(
+            onClick = onAdd,
+            enabled = canAdd,
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(R.string.onboarding_contact_add))
+        }
+        OutlinedButton(
+            onClick = onImport,
+            modifier = Modifier.weight(1f)
+        ) {
+            Icon(Icons.Default.ImportContacts, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(R.string.onboarding_contact_import))
+        }
+    }
+
+    if (contacts.isEmpty()) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.WarningAmber,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(22.dp)
+                )
+                Text(
+                    text = stringResource(R.string.onboarding_contact_required),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    } else {
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        Text(
+            text = stringResource(R.string.onboarding_contact_added_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        contacts.forEach { contact ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = contact.name.take(1).uppercase(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = contact.name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = contact.phoneNumber,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                IconButton(onClick = { onRemove(contact) }) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.onboarding_contact_remove),
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun SecurityStep(
     pin: String,
     onPinChange: (String) -> Unit,
@@ -472,7 +681,8 @@ private fun SecurityStep(
 
 @Composable
 private fun DoneStep(
-    smsEnabled: Boolean
+    smsEnabled: Boolean,
+    trustedContactCount: Int
 ) {
     Spacer(Modifier.height(8.dp))
     Text(
@@ -490,6 +700,11 @@ private fun DoneStep(
 
     SummaryRow(stringResource(R.string.enable_sms_commands), if (smsEnabled) "On" else "Off")
     SummaryRow("Protection Mode", "Active")
+    SummaryRow(
+        stringResource(R.string.onboarding_step_contact),
+        if (trustedContactCount == 1) "1 contact"
+        else "$trustedContactCount contacts"
+    )
     Text(
         text = "You can enable background protection and configure the battery beacon in the Settings tab later.",
         style = MaterialTheme.typography.bodySmall,

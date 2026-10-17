@@ -1,10 +1,6 @@
 package com.example.smsguard.ui
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.text.format.DateUtils
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,8 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,13 +21,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ImportContacts
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
@@ -41,7 +33,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +44,6 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,19 +58,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import com.example.smsguard.ContactUtils
-import com.example.smsguard.DeviceContact
-import com.example.smsguard.PhoneNumbers
-import com.example.smsguard.PermissionState
 import com.example.smsguard.Prefs
 import com.example.smsguard.SuspiciousNumber
 import com.example.smsguard.TrustedContact
 import com.example.smsguard.ui.components.SectionCard
 import com.example.smsguard.ui.components.SectionHeader
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.example.smsguard.ui.components.rememberContactImporter
 
 @Composable
 fun ContactsScreen(modifier: Modifier = Modifier) {
@@ -92,12 +76,6 @@ fun ContactsScreen(modifier: Modifier = Modifier) {
     var showAddDialog by remember { mutableStateOf(false) }
     var contactToDelete by remember { mutableStateOf<TrustedContact?>(null) }
     var showClearSuspiciousDialog by remember { mutableStateOf(false) }
-
-    // Import-from-contacts state
-    var showImportDialog by remember { mutableStateOf(false) }
-    var importQuery by remember { mutableStateOf("") }
-    var deviceContacts by remember { mutableStateOf<List<DeviceContact>?>(null) }
-    var showContactsPermissionDialog by remember { mutableStateOf(false) }
 
     // Dialog state for adding a contact
     var newName by remember { mutableStateOf("") }
@@ -119,37 +97,13 @@ fun ContactsScreen(modifier: Modifier = Modifier) {
         onPauseOrDispose {}
     }
 
-    val contactsPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            showImportDialog = true
-        } else {
-            showContactsPermissionDialog = true
-        }
-    }
-
-    val openImport: () -> Unit = {
-        val granted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.READ_CONTACTS
-        ) == PackageManager.PERMISSION_GRANTED
-        if (granted) {
-            importQuery = ""
-            showImportDialog = true
-        } else {
-            contactsPermissionLauncher.launch(Manifest.permission.READ_CONTACTS)
-        }
-    }
-
-    // Load the address book off the main thread only while the picker is actually visible.
-    LaunchedEffect(showImportDialog) {
-        if (showImportDialog) {
-            deviceContacts = null
-            deviceContacts = withContext(Dispatchers.IO) {
-                ContactUtils.loadPhoneContacts(context)
-            }
-        }
+    // Opens the phone-book picker (requesting contacts access if needed) and pre-fills the add
+    // dialog with the chosen name and number.
+    val openImport = rememberContactImporter { contact ->
+        newName = contact.name
+        newPhone = contact.number
+        newIsPrimary = contactsList.isEmpty()
+        showAddDialog = true
     }
 
     LazyColumn(
@@ -424,172 +378,6 @@ fun ContactsScreen(modifier: Modifier = Modifier) {
             dismissButton = {
                 TextButton(onClick = { showAddDialog = false }) {
                     Text("Cancel")
-                }
-            }
-        )
-    }
-
-    // Import picker dialog
-    if (showImportDialog) {
-        val loaded = deviceContacts
-        val filtered = remember(loaded, importQuery) {
-            val all = loaded ?: return@remember emptyList()
-            if (importQuery.isBlank()) {
-                all
-            } else {
-                val digits = PhoneNumbers.normalize(importQuery)
-                all.filter { contact ->
-                    contact.name.contains(importQuery, ignoreCase = true) ||
-                        (digits.isNotEmpty() && PhoneNumbers.normalize(contact.number).contains(digits))
-                }
-            }
-        }
-
-        AlertDialog(
-            onDismissRequest = { showImportDialog = false },
-            title = {
-                Text(
-                    text = "Select a Contact",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = importQuery,
-                        onValueChange = { importQuery = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Search by name or number") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        trailingIcon = {
-                            if (importQuery.isNotEmpty()) {
-                                IconButton(onClick = { importQuery = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
-                                }
-                            }
-                        },
-                        singleLine = true
-                    )
-
-                    when {
-                        loaded == null -> Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(120.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(28.dp))
-                        }
-
-                        filtered.isEmpty() -> Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(120.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (loaded.isEmpty()) "No contacts found on this device."
-                                else "No contacts match your search.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        else -> LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 340.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            items(filtered) { contact ->
-                                Surface(
-                                    onClick = {
-                                        newName = contact.name
-                                        newPhone = contact.number
-                                        newIsPrimary = contactsList.isEmpty()
-                                        showImportDialog = false
-                                        showAddDialog = true
-                                    },
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = MaterialTheme.colorScheme.surface
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.primaryContainer),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = contact.name.take(1).uppercase(),
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = contact.name,
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                fontWeight = FontWeight.SemiBold,
-                                                maxLines = 1
-                                            )
-                                            Text(
-                                                text = contact.number,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                maxLines = 1
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showImportDialog = false }) {
-                    Text("Close")
-                }
-            }
-        )
-    }
-
-    // Contacts permission explanation
-    if (showContactsPermissionDialog) {
-        AlertDialog(
-            onDismissRequest = { showContactsPermissionDialog = false },
-            title = { Text("Contacts access needed") },
-            text = {
-                Text(
-                    "To pick a contact from your phone book, SMSGuard needs permission to read your contacts. " +
-                        "If you denied it permanently, enable it from the app settings. You can always type a " +
-                        "number manually instead."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showContactsPermissionDialog = false
-                    runCatching { context.startActivity(PermissionState.appSettingsIntent(context)) }
-                }) {
-                    Text("Open Settings")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showContactsPermissionDialog = false }) {
-                    Text("Not now")
                 }
             }
         )

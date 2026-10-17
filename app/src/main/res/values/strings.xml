@@ -114,7 +114,16 @@
     <string name="pin_too_short">PIN must be 4 to 8 digits</string>
     <string name="onboarding_step_contact">Trusted contact</string>
     <string name="onboarding_contact_title">Set your trusted contact</string>
-    <string name="onboarding_contact_subtitle">If the battery beacon is on, SMSGuard sends your location here when the battery is low.</string>
+    <string name="onboarding_contact_subtitle">Add at least one trusted contact to continue. Only numbers saved here can send SMS commands.</string>
+    <string name="onboarding_contact_name_label">Contact name</string>
+    <string name="onboarding_contact_name_hint">e.g. Mom, John Doe</string>
+    <string name="onboarding_contact_phone_label">Phone number</string>
+    <string name="onboarding_contact_phone_hint">e.g. +1234567890</string>
+    <string name="onboarding_contact_add">Add contact</string>
+    <string name="onboarding_contact_import">Import</string>
+    <string name="onboarding_contact_added_title">Added contacts</string>
+    <string name="onboarding_contact_remove">Remove trusted contact</string>
+    <string name="onboarding_contact_required">At least one trusted contact is required before you can continue.</string>
     <string name="onboarding_continue">Continue</string>
     <string name="onboarding_back">Back</string>
     <string name="onboarding_get_started">Get started</string>
