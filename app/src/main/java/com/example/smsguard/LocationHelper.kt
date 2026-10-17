@@ -3,12 +3,15 @@ package com.example.smsguard
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import androidx.core.content.ContextCompat
 import java.util.Locale
 
@@ -26,6 +29,29 @@ object LocationHelper {
         return fine == PackageManager.PERMISSION_GRANTED ||
             coarse == PackageManager.PERMISSION_GRANTED
     }
+
+    /**
+     * True when the system-wide location switch is on.
+     *
+     * Android only lets the user flip this toggle, so the UI uses this to block enabling the
+     * `#LOCATE#PIN` command (and to keep it off on launch) while location is switched off.
+     */
+    fun isLocationEnabled(context: Context): Boolean {
+        val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            ?: return false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            return manager.isLocationEnabled
+        }
+        @Suppress("DEPRECATION")
+        return runCatching { manager.isProviderEnabled(LocationManager.GPS_PROVIDER) }
+            .getOrDefault(false) ||
+            runCatching { manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) }
+                .getOrDefault(false)
+    }
+
+    /** Opens the system Location settings screen so the user can switch location on. */
+    fun settingsIntent(): Intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     @SuppressLint("MissingPermission")
     fun lastKnown(context: Context): Location? {
