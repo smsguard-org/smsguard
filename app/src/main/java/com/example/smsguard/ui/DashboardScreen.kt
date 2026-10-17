@@ -61,6 +61,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.smsguard.CommandRecord
 import com.example.smsguard.PermissionEntry
 import com.example.smsguard.PermissionState
 import com.example.smsguard.PermissionStatus
@@ -182,18 +183,17 @@ fun DashboardScreen(
         if (commandHistory.isNotEmpty()) {
             val previewItems = commandHistory.take(3)
             items(previewItems.size, span = { GridItemSpan(2) }) { index ->
-                val parts = previewItems[index].split("|")
-                val name = parts.getOrNull(0) ?: "Unknown"
-                val time = parts.getOrNull(1)?.toLongOrNull() ?: 0L
-                
+                val record = CommandRecord.parse(previewItems[index])
+
                 val timeString = DateUtils.getRelativeTimeSpanString(
-                    time,
+                    record.timestamp,
                     System.currentTimeMillis(),
                     DateUtils.MINUTE_IN_MILLIS
                 ).toString()
 
                 RecentActivityCard(
-                    lastCommand = "#$name",
+                    lastCommand = "#${record.command}",
+                    sender = record.sender,
                     time = timeString,
                     status = "Executed"
                 )
@@ -572,6 +572,7 @@ private fun StatCard(
 @Composable
 private fun RecentActivityCard(
     lastCommand: String,
+    sender: String,
     time: String,
     status: String
 ) {
@@ -603,6 +604,7 @@ private fun RecentActivityCard(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold
                 )
+                Text(text = "By $sender", style = MaterialTheme.typography.bodySmall)
                 Text(text = "$time • $status", style = MaterialTheme.typography.bodySmall)
             }
         }

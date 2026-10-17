@@ -234,16 +234,17 @@ object Prefs {
 
     fun alertCount(context: Context): Int = sp(context).getInt(KEY_ALERT_COUNT, 0)
 
-    fun incrementCommandCount(context: Context, commandName: String) {
+    fun incrementCommandCount(context: Context, commandName: String, sender: String = "") {
         val current = commandCount(context)
         val time = System.currentTimeMillis()
+        val safeSender = sender.replace("|", " ").trim()
         sp(context).edit()
             .putInt(KEY_COMMAND_COUNT, current + 1)
             .putLong(KEY_LAST_COMMAND_TIME, time)
             .putString(KEY_LAST_COMMAND_NAME, commandName)
             .apply()
-        
-        addToHistory(context, "$commandName|$time")
+
+        addToHistory(context, "$commandName|$time|$safeSender")
     }
 
     private fun addToHistory(context: Context, entry: String) {
@@ -255,7 +256,7 @@ object Prefs {
 
     fun commandHistory(context: Context): List<String> {
         val set = sp(context).getStringSet(KEY_COMMAND_HISTORY, emptySet()) ?: emptySet()
-        return set.toList().sortedByDescending { it.split("|").lastOrNull()?.toLongOrNull() ?: 0L }
+        return set.toList().sortedByDescending { CommandRecord.parse(it).timestamp }
     }
 
     fun incrementAlertCount(context: Context) {

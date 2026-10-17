@@ -52,7 +52,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 continue
             }
 
-            Prefs.incrementCommandCount(context, command)
+            Prefs.incrementCommandCount(context, command, senderLabel(context, from))
 
             when (command) {
                 SmsGuardCommand.LOCATE -> handleLocate(context, from)
@@ -124,6 +124,14 @@ class SmsCommandReceiver : BroadcastReceiver() {
     private fun lockDevice(context: Context): Boolean =
         AccessibilityPermission.isScreenLockEnabled(context) &&
             ScreenLockAccessibilityService.lockDevice()
+
+    /** The saved name of the trusted contact [from] resolves to, or the raw number if unnamed. */
+    private fun senderLabel(context: Context, from: String): String =
+        Prefs.trustedContactsList(context)
+            .firstOrNull { PhoneNumbers.matches(it.phoneNumber, from) }
+            ?.name
+            ?.takeIf { it.isNotBlank() }
+            ?: from
 
     @SuppressLint("MissingPermission")
     private fun handleData(context: Context, from: String) {

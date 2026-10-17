@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.smsguard.CommandRecord
 import com.example.smsguard.ui.components.SectionCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,12 +76,10 @@ fun ActivityScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(commandHistory) { entry ->
-                    val parts = entry.split("|")
-                    val name = parts.getOrNull(0) ?: "Unknown"
-                    val time = parts.getOrNull(1)?.toLongOrNull() ?: 0L
+                    val record = CommandRecord.parse(entry)
 
                     val timeString = DateUtils.getRelativeTimeSpanString(
-                        time,
+                        record.timestamp,
                         System.currentTimeMillis(),
                         DateUtils.MINUTE_IN_MILLIS
                     ).toString()
@@ -93,9 +92,14 @@ fun ActivityScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = "#$name",
+                                    text = "#${record.command}",
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "By ${record.sender}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = "Status: Executed",
