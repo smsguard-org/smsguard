@@ -34,6 +34,7 @@ object Prefs {
     private const val KEY_PERMISSIONS_REQUESTED = "permissions_requested"
     private const val KEY_SUSPICIOUS_NUMBERS = "suspicious_numbers"
     private const val KEY_SIM_SNAPSHOT = "sim_snapshot"
+    private const val KEY_SIM_ALERT_FIX = "sim_alert_false_positive_fix"
 
     const val DEFAULT_PIN = "1234"
     const val DEFAULT_BATTERY_THRESHOLD = 5
@@ -260,6 +261,20 @@ object Prefs {
     fun incrementAlertCount(context: Context) {
         val current = alertCount(context)
         sp(context).edit().putInt(KEY_ALERT_COUNT, current + 1).apply()
+    }
+
+    /**
+     * One-time cleanup for the alert counter that a SIM-monitor bug inflated by treating a
+     * transient empty subscription read as a brand-new SIM. Resets the counter so it reflects
+     * only alerts raised after the fix, then never runs again.
+     */
+    fun applySimAlertCountFix(context: Context) {
+        val prefs = sp(context)
+        if (prefs.getBoolean(KEY_SIM_ALERT_FIX, false)) return
+        prefs.edit()
+            .putInt(KEY_ALERT_COUNT, 0)
+            .putBoolean(KEY_SIM_ALERT_FIX, true)
+            .apply()
     }
 
     fun lastCommandTime(context: Context): Long = sp(context).getLong(KEY_LAST_COMMAND_TIME, 0L)

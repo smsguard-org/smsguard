@@ -42,24 +42,27 @@ class SimChangeMonitor(context: Context) {
         val current = (subscriptionManager?.activeSubscriptionInfoList ?: emptyList())
             .map(::toSim)
             .sortedBy { it.slotIndex }
-        val encoded = current.joinToString("|") { it.encode() }
+
+        // An empty reading is almost always transient: the list is momentarily unavailable while
+        // subscriptions settle (at boot, during a network change, or on a permission refresh).
+        // Keep the last known baseline instead of overwriting it, otherwise the next real reading
+        // looks like every SIM was just inserted and fires a false alert for each one.
+        if (current.isEmpty()) return
+
+        val encoded = SimSnapshot.encodeAll(current)
         val previousEncoded = Prefs.simSnapshot(appContext)
 
-        // The callback is also delivered immediately after registering; that establishes the
-        // baseline rather than treating the currently installed SIM as a replacement.
-        if (previousEncoded == null) {
+        // The first real reading establishes the baseline rather than treating the SIMs that are
+        // already installed as a replacement. A blank value is left over from the bug above.
+        if (previousEncoded.isNullOrBlank()) {
             Prefs.setSimSnapshot(appContext, encoded)
             return
         }
 
-        val previous = previousEncoded.split('|').mapNotNull(SimSnapshot::decode)
+        val previous = SimSnapshot.decodeAll(previousEncoded)
         Prefs.setSimSnapshot(appContext, encoded)
-        if (current.isEmpty()) return // A card was removed; wait for any replacement.
 
-        val previousBySlot = previous.associateBy { it.slotIndex }
-        val insertedOrReplaced = current.filter { now ->
-            previousBySlot[now.slotIndex]?.fingerprint != now.fingerprint
-        }
+        val insertedOrReplaced = SimSnapshot.changed(previous, current)
         if (insertedOrReplaced.isEmpty()) return
 
         sendAlert(insertedOrReplaced)
@@ -111,19 +114,4 @@ class SimChangeMonitor(context: Context) {
     private fun sha256(value: String): String = MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray())
         .joinToString("") { "%02x".format(Locale.US, it) }
-
-    private data class SimSnapshot(
-        val slotIndex: Int,
-        val fingerprint: String,
-        val description: String
-    ) {
-        fun encode(): String = listOf(slotIndex, fingerprint, description.replace("|", " ")).joinToString("~")
-
-        companion object {
-            fun decode(value: String): SimSnapshot? {
-                val parts = value.split("~", limit = 3)
-                return if (parts.size == 3) SimSnapshot(parts[0].toIntOrNull() ?: return null, parts[1], parts[2]) else null
-            }
-        }
-    }
 }

@@ -23,6 +23,7 @@ import com.example.smsguard.ui.theme.SmsguardTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Prefs.applySimAlertCountFix(this)
         enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
