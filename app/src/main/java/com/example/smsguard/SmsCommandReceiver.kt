@@ -111,8 +111,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
     }
 
     private fun handleLock(context: Context, from: String) {
-        val locked = AccessibilityPermission.isScreenLockEnabled(context) &&
-            ScreenLockAccessibilityService.lockDevice()
+        val locked = lockDevice(context)
         val reply = if (locked) {
             "SMSGuard Security:\nDevice screen lock triggered and active session secured."
         } else {
@@ -120,6 +119,11 @@ class SmsCommandReceiver : BroadcastReceiver() {
         }
         SmsSender.send(context, from, reply)
     }
+
+    /** Locks the screen through the opt-in accessibility service; false if it is unavailable. */
+    private fun lockDevice(context: Context): Boolean =
+        AccessibilityPermission.isScreenLockEnabled(context) &&
+            ScreenLockAccessibilityService.lockDevice()
 
     @SuppressLint("MissingPermission")
     private fun handleData(context: Context, from: String) {
@@ -213,7 +217,14 @@ class SmsCommandReceiver : BroadcastReceiver() {
     }
 
     private fun handleWipe(context: Context, from: String) {
-        SmsSender.send(context, from, "SMSGuard Security:\nEmergency wipe warning logged. Device locked for protection.")
+        Prefs.incrementAlertCount(context)
+        val locked = lockDevice(context)
+        val reply = if (locked) {
+            "SMSGuard Security:\nEmergency wipe alert logged. Device locked for protection."
+        } else {
+            "SMSGuard Security:\nEmergency wipe alert logged, but the device could not be locked. Open SMSGuard and enable the Screen Lock Accessibility Service."
+        }
+        SmsSender.send(context, from, reply)
     }
 
     private fun handleStatus(context: Context, from: String) {
