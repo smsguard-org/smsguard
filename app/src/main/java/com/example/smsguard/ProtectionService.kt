@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 class ProtectionService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
+    private var simMonitor: SimChangeMonitor? = null
 
     private val ticker = object : Runnable {
         override fun run() {
@@ -30,6 +31,7 @@ class ProtectionService : Service() {
     override fun onCreate() {
         super.onCreate()
         NotificationHelper.createChannels(this)
+        simMonitor = SimChangeMonitor(this).also { it.start() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -40,6 +42,9 @@ class ProtectionService : Service() {
             }
             return START_NOT_STICKY
         }
+        // A user may grant Phone and SIM status while this service is already running.
+        // Retrying here makes the monitor start without requiring protection to be toggled off.
+        simMonitor?.start()
         startAsForeground()
         handler.removeCallbacks(ticker)
         handler.post(ticker)
@@ -66,6 +71,8 @@ class ProtectionService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacks(ticker)
+        simMonitor?.stop()
+        simMonitor = null
         NotificationHelper.cancelProtection(this)
         super.onDestroy()
     }

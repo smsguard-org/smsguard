@@ -66,7 +66,7 @@ import com.example.smsguard.PermissionGroup
 import com.example.smsguard.PermissionState
 import com.example.smsguard.PermissionStatus
 import com.example.smsguard.Prefs
-// import com.example.smsguard.ProtectionService // TODO: re-enable with the protection notification
+import com.example.smsguard.ProtectionService
 import com.example.smsguard.R
 import com.example.smsguard.SmsGuardCommand
 
@@ -177,8 +177,7 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             onClick = {
                                 Prefs.setServiceEnabled(context, true)
                                 Prefs.setOnboarded(context, true)
-                                // TODO: re-enable the ongoing protection notification.
-                                // ProtectionService.start(context)
+                                ProtectionService.start(context)
                                 onComplete()
                             }
                         )

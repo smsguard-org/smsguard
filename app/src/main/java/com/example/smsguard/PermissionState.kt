@@ -94,6 +94,14 @@ object PermissionState {
                 mode = PermissionMode.ANY
             )
         )
+        add(
+            PermissionGroup(
+                labelRes = R.string.perm_phone_state,
+                descRes = R.string.perm_phone_state_desc,
+                permissions = listOf(Manifest.permission.READ_PHONE_STATE),
+                mode = PermissionMode.ALL
+            )
+        )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             add(
                 PermissionGroup(

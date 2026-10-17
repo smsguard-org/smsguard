@@ -83,6 +83,8 @@
     <string name="perm_send_sms_desc">Reply with your location and alert messages.</string>
     <string name="perm_location">Location access</string>
     <string name="perm_location_desc">Read your GPS coordinates to send in replies and beacons.</string>
+    <string name="perm_phone_state">Phone and SIM status</string>
+    <string name="perm_phone_state_desc">Detect a SIM card being replaced while protection is active. SIM identifiers are never sent by SMS.</string>
     <string name="perm_notifications">Notifications</string>
     <string name="perm_notifications_desc">Show the siren and beacon notifications.</string>
     <string name="grant_permissions_button">Grant permissions</string>

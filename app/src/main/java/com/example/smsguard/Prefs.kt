@@ -33,6 +33,7 @@ object Prefs {
     private const val KEY_THEME_MODE = "theme_mode"
     private const val KEY_PERMISSIONS_REQUESTED = "permissions_requested"
     private const val KEY_SUSPICIOUS_NUMBERS = "suspicious_numbers"
+    private const val KEY_SIM_SNAPSHOT = "sim_snapshot"
 
     const val DEFAULT_PIN = "1234"
     const val DEFAULT_BATTERY_THRESHOLD = 5
@@ -316,5 +317,12 @@ object Prefs {
 
     fun setThemeMode(context: Context, mode: Int) {
         sp(context).edit().putInt(KEY_THEME_MODE, mode).apply()
+    }
+
+    /** Last observed active-SIM state. Null means monitoring has not been initialized yet. */
+    fun simSnapshot(context: Context): String? = sp(context).getString(KEY_SIM_SNAPSHOT, null)
+
+    fun setSimSnapshot(context: Context, snapshot: String) {
+        sp(context).edit().putString(KEY_SIM_SNAPSHOT, snapshot).apply()
     }
 }

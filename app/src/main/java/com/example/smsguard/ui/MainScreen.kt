@@ -41,7 +41,7 @@ import com.example.smsguard.PermissionState
 import com.example.smsguard.Prefs
 import com.example.smsguard.SirenController
 import com.example.smsguard.AccessibilityPermission
-// import com.example.smsguard.ProtectionService // TODO: re-enable with the protection notification
+import com.example.smsguard.ProtectionService
 import com.example.smsguard.SmsGuardCommand
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -94,6 +94,7 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
     LifecycleResumeEffect(context) {
         permissionTrigger++
         sirenActive = Prefs.sirenActive(context)
+        if (Prefs.serviceEnabled(context)) ProtectionService.start(context)
         onPauseOrDispose {}
     }
 
@@ -118,13 +119,12 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
         }
     }
 
-    // TODO: re-enable the ongoing "protection active" notification once we want a persistent bar.
-    // The foreground service only drives that notification; SMS protection itself runs from the
-    // manifest-registered SmsCommandReceiver, so leaving this off does not weaken protection.
-    // LaunchedEffect(serviceEnabled) {
-    //     if (serviceEnabled) ProtectionService.start(context)
-    //     else ProtectionService.stop(context)
-    // }
+    // SIM changes are observed by the foreground protection service. The persistent notification
+    // is required so Android may keep the observer alive after the app leaves the screen.
+    LaunchedEffect(serviceEnabled) {
+        if (serviceEnabled) ProtectionService.start(context)
+        else ProtectionService.stop(context)
+    }
 
     Scaffold(
         bottomBar = {
@@ -167,9 +167,8 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
                     onServiceToggle = {
                         serviceEnabled = it
                         Prefs.setServiceEnabled(context, it)
-                        // TODO: re-enable the ongoing protection notification.
-                        // if (it) ProtectionService.start(context)
-                        // else ProtectionService.stop(context)
+                        if (it) ProtectionService.start(context)
+                        else ProtectionService.stop(context)
                     },
                     sirenActive = sirenActive,
                     onStopSiren = {

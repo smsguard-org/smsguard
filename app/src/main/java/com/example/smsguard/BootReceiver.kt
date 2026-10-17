@@ -11,8 +11,7 @@ class BootReceiver : BroadcastReceiver() {
         if ((action == Intent.ACTION_BOOT_COMPLETED || action == Intent.ACTION_MY_PACKAGE_REPLACED) &&
             Prefs.serviceEnabled(context)
         ) {
-            // TODO: re-enable the ongoing protection notification.
-            // ProtectionService.start(context)
+            ProtectionService.start(context)
         }
     }
 }
