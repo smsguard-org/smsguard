@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ImportContacts
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.StarOutline
@@ -216,12 +217,17 @@ fun ContactsScreen(modifier: Modifier = Modifier) {
             items(contactsList, key = { it.id }) { contact ->
                 ContactCard(
                     contact = contact,
+                    // Protect the primary contact and the last remaining contact so the app
+                    // always keeps at least one trusted contact.
+                    removable = !contact.isPrimary && contactsList.size > 1,
                     onSetPrimary = {
                         Prefs.setPrimaryContact(context, contact.id)
                         refreshList()
                     },
                     onDelete = {
-                        contactToDelete = contact
+                        if (!contact.isPrimary && contactsList.size > 1) {
+                            contactToDelete = contact
+                        }
                     }
                 )
             }
@@ -504,6 +510,7 @@ private fun EmptySuspiciousState() {
 @Composable
 private fun ContactCard(
     contact: TrustedContact,
+    removable: Boolean,
     onSetPrimary: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -593,12 +600,33 @@ private fun ContactCard(
                     )
                 }
 
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete Contact",
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
-                    )
+                if (removable) {
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Contact",
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                        )
+                    }
+                } else {
+                    // The primary contact and the last remaining contact are protected so that
+                    // there is always at least one trusted contact.
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = if (contact.isPrimary) {
+                                "Primary contact can't be removed"
+                            } else {
+                                "At least one trusted contact is required"
+                            },
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
 
