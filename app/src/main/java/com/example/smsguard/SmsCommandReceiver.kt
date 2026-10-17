@@ -67,6 +67,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 SmsGuardCommand.CALLME -> handleCallMe(context, from)
                 SmsGuardCommand.CONTACTS -> handleContacts(context, from)
                 SmsGuardCommand.WIPE -> handleWipe(context, from)
+                SmsGuardCommand.STATUS -> handleStatus(context, from)
             }
             return
         }
@@ -213,6 +214,10 @@ class SmsCommandReceiver : BroadcastReceiver() {
 
     private fun handleWipe(context: Context, from: String) {
         SmsSender.send(context, from, "SMSGuard Security:\nEmergency wipe warning logged. Device locked for protection.")
+    }
+
+    private fun handleStatus(context: Context, from: String) {
+        SmsSender.send(context, from, DeviceStatus.summary(context))
     }
 
     private companion object {

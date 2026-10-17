@@ -27,6 +27,8 @@
     <string name="cmd_contacts_desc">Replies with configured trusted contact details and emergency info.</string>
     <string name="cmd_wipe">#WIPE#PIN</string>
     <string name="cmd_wipe_desc">Triggers remote emergency wipe alert and locks device for safety.</string>
+    <string name="cmd_status">#STATUS#PIN</string>
+    <string name="cmd_status_desc">Replies with a full device report: battery, network, Wi-Fi, location, storage and memory.</string>
     <string name="cmd_note">Commands work offline over SMS and match against the PIN you set below.</string>
 
     <string name="section_protection">Protection settings</string>

@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.Check
@@ -76,7 +77,8 @@ enum class CommandCategory(val label: String) {
     SECURITY("Security"),
     CONNECTIVITY("Connectivity"),
     HARDWARE("Hardware"),
-    EMERGENCY("Emergency")
+    EMERGENCY("Emergency"),
+    SYSTEM("System")
 }
 
 data class CommandItem(
@@ -165,6 +167,14 @@ fun CommandsScreen(modifier: Modifier = Modifier) {
                 format = "#INFO#PIN",
                 category = CommandCategory.HARDWARE,
                 icon = Icons.Default.Info
+            ),
+            CommandItem(
+                key = SmsGuardCommand.STATUS,
+                title = "Full Device Status",
+                description = "One-shot report: battery and power, network and mobile data, Wi-Fi, carrier, location, storage, memory, and device info.",
+                format = "#STATUS#PIN",
+                category = CommandCategory.SYSTEM,
+                icon = Icons.Default.Assessment
             ),
             CommandItem(
                 key = SmsGuardCommand.CALLME,

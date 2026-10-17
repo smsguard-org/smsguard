@@ -14,9 +14,10 @@ object SmsGuardCommand {
     const val CALLME = "CALLME"
     const val CONTACTS = "CONTACTS"
     const val WIPE = "WIPE"
+    const val STATUS = "STATUS"
 
     val ALL_COMMANDS = listOf(
-        LOCATE, ALARM, STOP, LOCK, DATA, WIFI, BATTERY, FLASH, INFO, CALLME, CONTACTS, WIPE
+        LOCATE, ALARM, STOP, LOCK, DATA, WIFI, BATTERY, FLASH, INFO, CALLME, CONTACTS, WIPE, STATUS
     )
 
     const val PIN_MIN_LENGTH = 4

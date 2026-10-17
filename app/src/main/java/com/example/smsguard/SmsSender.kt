@@ -15,7 +15,14 @@ object SmsSender {
     fun send(context: Context, destination: String, body: String) {
         if (destination.isBlank() || !canSend(context)) return
         try {
-            SmsManager.getDefault().sendTextMessage(destination, null, body, null, null)
+            val smsManager = SmsManager.getDefault()
+            val parts = smsManager.divideMessage(body)
+            if (parts.size > 1) {
+                // The status report and other detailed replies exceed a single SMS.
+                smsManager.sendMultipartTextMessage(destination, null, parts, null, null)
+            } else {
+                smsManager.sendTextMessage(destination, null, body, null, null)
+            }
         } catch (_: Exception) {
         }
     }
