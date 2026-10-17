@@ -30,9 +30,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
         for (message in messages) {
             val from = message.originatingAddress ?: continue
             val body = (message.messageBody ?: "").trim().uppercase(Locale.US)
-            val match = COMMAND_PATTERN.find(body) ?: continue
-            val command = match.groupValues[1]
-            val commandPin = match.groupValues[2]
+            val (command, commandPin) = SmsGuardCommand.parse(body) ?: continue
 
             // Only numbers saved as trusted contacts are allowed to trigger anything. Anyone
             // else is logged for the user to review and then ignored without a reply.
@@ -209,9 +207,7 @@ class SmsCommandReceiver : BroadcastReceiver() {
     }
 
     private fun handleCallMe(context: Context, from: String) {
-        val contact = Prefs.trustedContact(context)
-        val reply = "SMSGuard Alert:\nCallback request acknowledged for $from.\nTrusted Contact: ${contact.ifBlank { "Not set" }}"
-        SmsSender.send(context, from, reply)
+        SmsSender.send(context, from, CommandReplies.callMe(from, Prefs.trustedContact(context)))
     }
 
     private fun handleContacts(context: Context, from: String) {
@@ -237,9 +233,5 @@ class SmsCommandReceiver : BroadcastReceiver() {
 
     private fun handleStatus(context: Context, from: String) {
         SmsSender.send(context, from, DeviceStatus.summary(context))
-    }
-
-    private companion object {
-        val COMMAND_PATTERN = Regex("""#([A-Z]+)#(\d{4,8})#?""")
     }
 }
