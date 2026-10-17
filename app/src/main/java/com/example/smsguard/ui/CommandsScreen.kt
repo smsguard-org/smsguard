@@ -54,6 +54,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -68,9 +69,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import com.example.smsguard.Prefs
 import com.example.smsguard.SmsGuardCommand
 import com.example.smsguard.AccessibilityPermission
+import com.example.smsguard.LocationHelper
 
 enum class CommandCategory(val label: String) {
     ALL("All"),
@@ -203,11 +208,18 @@ fun CommandsScreen(modifier: Modifier = Modifier) {
         )
     }
 
+    // The LOCATE command is only usable while the system location switch is on. Read it once
+    // here so a command left enabled in a previous session does not come back on when location
+    // is currently off.
+    val locationEnabled = LocationHelper.isLocationEnabled(context)
+
     // State map for toggles (defaults to false for all commands after onboard)
     val enabledStates = remember {
         mutableStateMapOf<String, Boolean>().apply {
             allCommands.forEach { cmd ->
-                put(cmd.key, Prefs.isCommandEnabled(context, cmd.key))
+                val stored = Prefs.isCommandEnabled(context, cmd.key)
+                val effective = stored && (cmd.key != SmsGuardCommand.LOCATE || locationEnabled)
+                put(cmd.key, effective)
             }
         }
     }
@@ -215,6 +227,21 @@ fun CommandsScreen(modifier: Modifier = Modifier) {
     var selectedCategory by remember { mutableStateOf(CommandCategory.ALL) }
     var searchQuery by remember { mutableStateOf("") }
     var showScreenLockPermission by remember { mutableStateOf(false) }
+    var showLocationPermission by remember { mutableStateOf(false) }
+
+    // Force the stored LOCATE flag off whenever location is off, and keep the in-memory toggle
+    // in sync when the user flips the system switch while this screen is open.
+    LifecycleResumeEffect(context) {
+        val enabled = LocationHelper.isLocationEnabled(context)
+        Prefs.syncLocateCommandWithLocation(context)
+        if (!enabled) {
+            enabledStates[SmsGuardCommand.LOCATE] = false
+        }
+        onPauseOrDispose {}
+    }
+    LaunchedEffect(Unit) {
+        Prefs.syncLocateCommandWithLocation(context)
+    }
 
     val filteredCommands = remember(selectedCategory, searchQuery, enabledStates.size) {
         allCommands.filter { cmd ->
@@ -282,13 +309,22 @@ fun CommandsScreen(modifier: Modifier = Modifier) {
                                     onClick = {
                                         val screenLockAvailable =
                                             AccessibilityPermission.isScreenLockEnabled(context)
+                                        val locationAvailable =
+                                            LocationHelper.isLocationEnabled(context)
                                         allCommands.forEach { cmd ->
-                                            val enabled = cmd.key != SmsGuardCommand.LOCK || screenLockAvailable
+                                            val enabled = when (cmd.key) {
+                                                SmsGuardCommand.LOCK -> screenLockAvailable
+                                                SmsGuardCommand.LOCATE -> locationAvailable
+                                                else -> true
+                                            }
                                             enabledStates[cmd.key] = enabled
                                             Prefs.setCommandEnabled(context, cmd.key, enabled)
                                         }
                                         if (!screenLockAvailable) {
                                             showScreenLockPermission = true
+                                        }
+                                        if (!locationAvailable) {
+                                            showLocationPermission = true
                                         }
                                     },
                                     shape = RoundedCornerShape(12.dp),
@@ -376,16 +412,25 @@ fun CommandsScreen(modifier: Modifier = Modifier) {
                     command = command,
                     isEnabled = isEnabled,
                     onToggleChanged = { newState ->
-                        if (command.key == SmsGuardCommand.LOCK && newState &&
-                            !AccessibilityPermission.isScreenLockEnabled(context)
-                        ) {
-                            // Do not enable a command that cannot lock the device yet.
-                            enabledStates[command.key] = false
-                            Prefs.setCommandEnabled(context, command.key, false)
-                            showScreenLockPermission = true
-                        } else {
-                            enabledStates[command.key] = newState
-                            Prefs.setCommandEnabled(context, command.key, newState)
+                        when {
+                            command.key == SmsGuardCommand.LOCK && newState &&
+                                !AccessibilityPermission.isScreenLockEnabled(context) -> {
+                                // Do not enable a command that cannot lock the device yet.
+                                enabledStates[command.key] = false
+                                Prefs.setCommandEnabled(context, command.key, false)
+                                showScreenLockPermission = true
+                            }
+                            command.key == SmsGuardCommand.LOCATE && newState &&
+                                !LocationHelper.isLocationEnabled(context) -> {
+                                // GPS replies are impossible while system location is off.
+                                enabledStates[command.key] = false
+                                Prefs.setCommandEnabled(context, command.key, false)
+                                showLocationPermission = true
+                            }
+                            else -> {
+                                enabledStates[command.key] = newState
+                                Prefs.setCommandEnabled(context, command.key, newState)
+                            }
                         }
                     }
                 )
@@ -425,6 +470,40 @@ fun CommandsScreen(modifier: Modifier = Modifier) {
     if (showScreenLockPermission) {
         ScreenLockPermissionDialog(onDismiss = { showScreenLockPermission = false })
     }
+
+    if (showLocationPermission) {
+        LocationPermissionDialog(onDismiss = { showLocationPermission = false })
+    }
+}
+
+@Composable
+private fun LocationPermissionDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("📍 Turn On Device Location") },
+        text = {
+            Text(
+                "Required for GPS Location\n\n" +
+                    "The #LOCATE#PIN command can only reply with the device's coordinates while " +
+                    "location is switched on. Android does not let SMSGuard enable it for you, so " +
+                    "you need to turn it on in system settings.\n\n" +
+                    "What to do next:\n" +
+                    "1. Tap Go to Settings.\n" +
+                    "2. Turn Location on.\n" +
+                    "3. Come back and enable #LOCATE#PIN."
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onDismiss()
+                runCatching { context.startActivity(LocationHelper.settingsIntent()) }
+            }) { Text("Go to Settings") }
+        }
+    )
 }
 
 @Composable
