@@ -94,6 +94,9 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
     LifecycleResumeEffect(context) {
         permissionTrigger++
         sirenActive = Prefs.sirenActive(context)
+        // A command left enabled in a previous session must not stay on when the device's
+        // location switch is off, so re-check it every time the app comes back to the foreground.
+        Prefs.syncLocateCommandWithLocation(context)
         if (Prefs.serviceEnabled(context)) ProtectionService.start(context)
         onPauseOrDispose {}
     }
