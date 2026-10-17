@@ -44,7 +44,13 @@ fun SectionCard(
 }
 
 @Composable
-fun SectionHeader(title: String, icon: ImageVector, modifier: Modifier = Modifier) {
+fun SectionHeader(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    iconTint: Color = MaterialTheme.colorScheme.primary,
+    titleColor: Color = MaterialTheme.colorScheme.primary
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -54,13 +60,13 @@ fun SectionHeader(title: String, icon: ImageVector, modifier: Modifier = Modifie
             icon,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.primary
+            tint = iconTint
         )
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = titleColor
         )
     }
 }
