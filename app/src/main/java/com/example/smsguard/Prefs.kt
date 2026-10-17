@@ -329,6 +329,20 @@ object Prefs {
         editor.apply()
     }
 
+    /**
+     * Keeps the `#LOCATE#PIN` command aligned with the system location switch.
+     *
+     * When location is off the command cannot work, so it is forced back to disabled on launch
+     * instead of staying on from a previous session. Returns true when location is available.
+     */
+    fun syncLocateCommandWithLocation(context: Context): Boolean {
+        val locationEnabled = LocationHelper.isLocationEnabled(context)
+        if (!locationEnabled && isCommandEnabled(context, SmsGuardCommand.LOCATE)) {
+            setCommandEnabled(context, SmsGuardCommand.LOCATE, false)
+        }
+        return locationEnabled
+    }
+
     fun themeMode(context: Context): Int = sp(context).getInt(KEY_THEME_MODE, 0) // 0: System, 1: Light, 2: Dark
 
     fun setThemeMode(context: Context, mode: Int) {
