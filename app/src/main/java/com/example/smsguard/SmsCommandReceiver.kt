@@ -229,10 +229,11 @@ class SmsCommandReceiver : BroadcastReceiver() {
         SmsSender.send(context, from, CommandReplies.callMe(from, Prefs.trustedContact(context)))
     }
 
+     /** Replies with the number of configured contacts only — never the numbers themselves. */
     private fun handleContacts(context: Context, from: String) {
-        val contact = Prefs.trustedContact(context)
-        val reply = if (contact.isNotBlank()) {
-            "SMSGuard Trusted Contact:\n$contact"
+        val count = Prefs.trustedContactsList(context).size
+        val reply = if (count > 0) {
+            "SMSGuard: $count trusted contact(s) configured."
         } else {
             "SMSGuard: No trusted contact configured."
         }
