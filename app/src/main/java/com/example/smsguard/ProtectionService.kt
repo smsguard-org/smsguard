@@ -3,12 +3,15 @@ package com.example.smsguard
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.IBinder
 
 /** Background service that watches for SIM changes while Protection Mode is running. */
 class ProtectionService : Service() {
 
     private var simMonitor: SimChangeMonitor? = null
+    private val batteryReceiver = BatteryBeaconReceiver()
+    private var batteryReceiverRegistered = false
 
     override fun onCreate() {
         super.onCreate()
@@ -16,6 +19,10 @@ class ProtectionService : Service() {
         // Clear any leftover notification now that protection runs silently in the background.
         NotificationHelper.cancelProtection(this)
         simMonitor = SimChangeMonitor(this).also { it.start() }
+        // Battery broadcasts only reach receivers registered at runtime, so the low-battery
+        // beacon is wired up here for as long as protection is running.
+        registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        batteryReceiverRegistered = true
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -28,13 +35,15 @@ class ProtectionService : Service() {
         simMonitor?.start()
         return START_STICKY
     }
-
-    override fun onDestroy() {
+override fun onDestroy() {
+        if (batteryReceiverRegistered) {
+            unregisterReceiver(batteryReceiver)
+            batteryReceiverRegistered = false
+        }
         simMonitor?.stop()
         simMonitor = null
         super.onDestroy()
     }
-
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
