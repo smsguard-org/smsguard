@@ -70,8 +70,42 @@ object Prefs {
 
     fun pin(context: Context): String = sp(context).getString(KEY_PIN, DEFAULT_PIN) ?: DEFAULT_PIN
 
+    private const val KEY_PIN_HASH = "pin_hash"
+    private const val KEY_PIN_SALT = "pin_salt"
+
+    /** Stores the PIN as a salted SHA-256 hash; the plaintext is never kept. */
     fun setPin(context: Context, pin: String) {
-        sp(context).edit().putString(KEY_PIN, pin).apply()
+        val salt = ByteArray(16)
+        java.security.SecureRandom().nextBytes(salt)
+        sp(context).edit()
+            .putString(KEY_PIN_HASH, sha256(pin.toByteArray() + salt))
+            .putString(KEY_PIN_SALT, bytesToHex(salt))
+            .remove(KEY_PIN)
+            .apply()
+    }
+
+    /**
+     * True when [input] matches the configured PIN. Falls back to comparing the legacy
+     * plaintext value (or the default) so existing installs keep working until the user
+     * changes their PIN, at which point it is migrated to the hashed form.
+     */
+    fun verifyPin(context: Context, input: String): Boolean {
+        val prefs = sp(context)
+        val hash = prefs.getString(KEY_PIN_HASH, null)
+        val saltHex = prefs.getString(KEY_PIN_SALT, null)
+        if (hash == null || saltHex == null) return pin(context) == input
+        return sha256(input.toByteArray() + hexToBytes(saltHex)) == hash
+    }
+
+    private fun sha256(value: ByteArray): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest(value)
+            .joinToString("") { "%02x".format(it) }
+
+    private fun bytesToHex(bytes: ByteArray): String =
+        bytes.joinToString("") { "%02x".format(it) }
+
+    private fun hexToBytes(hex: String): ByteArray =
+        hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
     }
 
     private const val KEY_CONTACTS_SET = "trusted_contacts_set"
