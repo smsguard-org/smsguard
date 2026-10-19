@@ -212,6 +212,19 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                             onClick = {
                                 Prefs.setServiceEnabled(context, true)
                                 Prefs.setOnboarded(context, true)
+                                // Safe defaults: everyday recovery commands work right away,
+                                // while LOCK, WIPE and FLASH stay off until enabled manually.
+                                Prefs.setAllCommandsEnabled(
+                                    context,
+                                    listOf(
+                                        SmsGuardCommand.LOCATE, SmsGuardCommand.ALARM,
+                                        SmsGuardCommand.STOP, SmsGuardCommand.BATTERY,
+                                        SmsGuardCommand.INFO, SmsGuardCommand.DATA,
+                                        SmsGuardCommand.WIFI, SmsGuardCommand.CALLME,
+                                        SmsGuardCommand.CONTACTS, SmsGuardCommand.STATUS
+                                    ),
+                                    true
+                                )
                                 ProtectionService.start(context)
                                 onComplete()
                             }
