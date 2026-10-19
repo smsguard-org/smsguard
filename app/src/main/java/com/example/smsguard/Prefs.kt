@@ -104,8 +104,82 @@ object Prefs {
     private fun bytesToHex(bytes: ByteArray): String =
         bytes.joinToString("") { "%02x".format(it) }
 
-    private fun hexToBytes(hex: String): ByteArray =
+     private fun hexToBytes(hex: String): ByteArray =
         hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+
+    // --- Security state: PIN brute-force lockout, replay protection, audit log ------------
+
+    private const val KEY_AUTH_BLOCK = "auth_block_"
+    private const val KEY_AUTH_FAIL = "auth_fail_"
+    private const val KEY_AUTH_FAIL_COUNT = "auth_fail_count_"
+    private const val KEY_REPLAY_SEEN = "replay_seen"
+    private const val KEY_SECURITY_LOG = "security_log"
+    private const val MAX_AUTH_FAILURES = 5
+    private const val LOCKOUT_WINDOW_MS = 10 * 60 * 1000L
+    private const val REPLAY_WINDOW_MS = 5 * 60 * 1000L
+
+    /** True while [sender] is locked out after too many wrong PINs. */
+    fun isSenderBlocked(context: Context, sender: String): Boolean =
+        sp(context).getLong(KEY_AUTH_BLOCK + sender, 0L) > System.currentTimeMillis()
+
+    /** Records one failed PIN attempt; true when this attempt started a 10-minute lockout. */
+    fun recordAuthFailure(context: Context, sender: String): Boolean {
+        val prefs = sp(context)
+        val now = System.currentTimeMillis()
+        val lastFailure = prefs.getLong(KEY_AUTH_FAIL + sender, 0L)
+        val failures = if (now - lastFailure > LOCKOUT_WINDOW_MS) {
+            1L
+        } else {
+            prefs.getLong(KEY_AUTH_FAIL_COUNT + sender, 0L) + 1
+        }
+        val editor = prefs.edit()
+            .putLong(KEY_AUTH_FAIL + sender, now)
+            .putLong(KEY_AUTH_FAIL_COUNT + sender, failures)
+        if (failures >= MAX_AUTH_FAILURES) {
+            editor.putLong(KEY_AUTH_BLOCK + sender, now + LOCKOUT_WINDOW_MS)
+            editor.remove(KEY_AUTH_FAIL_COUNT + sender)
+        }
+        editor.apply()
+        return failures >= MAX_AUTH_FAILURES
+    }
+
+    fun clearAuthFailures(context: Context, sender: String) {
+        sp(context).edit()
+            .remove(KEY_AUTH_FAIL_COUNT + sender)
+            .remove(KEY_AUTH_FAIL + sender)
+            .apply()
+    }
+
+    /** True when the identical SMS from [sender] already ran within the replay window. */
+    fun isReplay(context: Context, sender: String, body: String): Boolean {
+        val prefs = sp(context)
+        val now = System.currentTimeMillis()
+        val digest = sha256(body.toByteArray())
+        val seen = prefs.getStringSet(KEY_REPLAY_SEEN, emptySet()) ?: emptySet()
+        val fresh = seen.filter { entry ->
+            (now - (entry.substringAfterLast('|').toLongOrNull() ?: 0L)) <= REPLAY_WINDOW_MS
+        }
+        val hit = fresh.any { it == "$sender|$digest" }
+        if (!hit) {
+            prefs.edit().putStringSet(KEY_REPLAY_SEEN, fresh.toSet() + "$sender|$digest|$now").apply()
+        }
+        return hit
+    }
+
+    /** Appends [message] to the in-app security log (kept to the most recent 50 entries). */
+    fun logSecurityEvent(context: Context, message: String) {
+        val prefs = sp(context)
+        val lines = (prefs.getString(KEY_SECURITY_LOG, "") ?: "")
+            .split('\n').filter { it.isNotBlank() }.toMutableList()
+        lines += "${System.currentTimeMillis()}|$message"
+        prefs.edit().putString(KEY_SECURITY_LOG, lines.takeLast(50).joinToString("\n")).apply()
+    }
+
+    fun securityLog(context: Context): List<String> =
+        (sp(context).getString(KEY_SECURITY_LOG, "") ?: "")
+            .split('\n').filter { it.isNotBlank() }
+            .sortedBy { it.substringBefore('|').toLongOrNull() ?: 0L }
+            .map { it.substringAfter('|') }
 
     private const val KEY_CONTACTS_SET = "trusted_contacts_set"
 
