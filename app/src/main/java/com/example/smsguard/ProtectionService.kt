@@ -35,7 +35,7 @@ class ProtectionService : Service() {
         simMonitor?.start()
         return START_STICKY
     }
-override fun onDestroy() {
+    override fun onDestroy() {
         if (batteryReceiverRegistered) {
             unregisterReceiver(batteryReceiver)
             batteryReceiverRegistered = false
