@@ -106,7 +106,6 @@ object Prefs {
 
     private fun hexToBytes(hex: String): ByteArray =
         hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
-    }
 
     private const val KEY_CONTACTS_SET = "trusted_contacts_set"
 
