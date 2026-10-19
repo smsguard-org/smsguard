@@ -70,7 +70,8 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
     var themeMode by remember { mutableIntStateOf(Prefs.themeMode(context)) }
     var serviceEnabled by remember { mutableStateOf(Prefs.serviceEnabled(context)) }
     var smsEnabled by remember { mutableStateOf(Prefs.smsEnabled(context)) }
-    var pin by remember { mutableStateOf(Prefs.pin(context)) }
+    // Never prefill: the stored value is now a hash, not the PIN itself.
+    var pin by remember { mutableStateOf("") }
     var beaconEnabled by remember { mutableStateOf(Prefs.batteryBeaconEnabled(context)) }
     var contact by remember { mutableStateOf(Prefs.trustedContact(context)) }
     var threshold by remember { mutableFloatStateOf(Prefs.batteryThreshold(context).toFloat()) }
