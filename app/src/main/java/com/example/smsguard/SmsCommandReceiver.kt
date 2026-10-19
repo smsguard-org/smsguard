@@ -24,8 +24,6 @@ class SmsCommandReceiver : BroadcastReceiver() {
         if (intent.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
         if (!Prefs.serviceEnabled(context)) return
         if (!Prefs.smsEnabled(context)) return
-
-        val pin = Prefs.pin(context)
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
         for (message in messages) {
             val from = message.originatingAddress ?: continue
@@ -39,7 +37,28 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 continue
             }
 
-            if (commandPin != pin) continue
+            // A trusted sender that keeps guessing the PIN is locked out for 10 minutes.
+            if (Prefs.isSenderBlocked(context, from)) {
+                Prefs.logSecurityEvent(context, "Ignored command from locked-out sender: $from")
+                continue
+            }
+
+            if (!Prefs.verifyPin(context, commandPin)) {
+                val lockedOut = Prefs.recordAuthFailure(context, from)
+                Prefs.logSecurityEvent(
+                    context,
+                    if (lockedOut) "Sender locked out after repeated wrong PINs: $from"
+                    else "Wrong PIN from trusted sender: $from"
+                )
+                continue
+            }
+            Prefs.clearAuthFailures(context, from)
+
+            // An identical SMS replayed within a few minutes must not run twice.
+            if (Prefs.isReplay(context, from, body)) {
+                Prefs.logSecurityEvent(context, "Replayed command ignored: $from")
+                continue
+            }
 
             if (!Prefs.isCommandEnabled(context, command)) {
                 SmsSender.send(
