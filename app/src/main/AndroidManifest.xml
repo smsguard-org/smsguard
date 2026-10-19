@@ -45,7 +45,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-<receiver
+        <receiver
             android:name=".SmsCommandReceiver"
             android:exported="true"
             android:permission="android.permission.BROADCAST_SMS">
