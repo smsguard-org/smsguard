@@ -35,6 +35,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.material.icons.filled.ContactPhone
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import com.example.smsguard.PermissionState
@@ -50,6 +51,7 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Default.Dashboard)
     object Commands : Screen("commands", "Commands", Icons.AutoMirrored.Filled.ListAlt)
     object Contacts : Screen("contacts", "Contacts", Icons.Default.ContactPhone)
+    object Pair : Screen("pair", "Pair", Icons.Default.QrCodeScanner)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
     object Activity : Screen("activity", "Activity", Icons.Default.History)
 }
@@ -134,7 +136,13 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
-                val items = listOf(Screen.Dashboard, Screen.Commands, Screen.Contacts, Screen.Settings)
+                val items = listOf(
+                    Screen.Dashboard,
+                    Screen.Commands,
+                    Screen.Contacts,
+                    Screen.Pair,
+                    Screen.Settings
+                )
                 
                 items.forEach { screen ->
                     NavigationBarItem(
@@ -210,6 +218,9 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
             }
             composable(Screen.Contacts.route) {
                 ContactsScreen()
+            }
+            composable(Screen.Pair.route) {
+                PairScreen()
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(

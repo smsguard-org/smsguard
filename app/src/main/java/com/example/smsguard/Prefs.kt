@@ -35,6 +35,8 @@ object Prefs {
     private const val KEY_SUSPICIOUS_NUMBERS = "suspicious_numbers"
     private const val KEY_SIM_SNAPSHOT = "sim_snapshot"
     private const val KEY_SIM_ALERT_FIX = "sim_alert_false_positive_fix"
+    private const val KEY_PAIRING_BASE_URL = "pairing_base_url"
+    private const val KEY_PAIRED_DEVICE_NAME = "paired_device_name"
 
     const val DEFAULT_PIN = "1234"
     const val DEFAULT_BATTERY_THRESHOLD = 5
@@ -461,5 +463,21 @@ object Prefs {
 
     fun setSimSnapshot(context: Context, snapshot: String) {
         sp(context).edit().putString(KEY_SIM_SNAPSHOT, snapshot).apply()
+    }
+
+    /** Dashboard server used for QR pairing. Never localhost; defaults to the emulator host alias. */
+    fun pairingBaseUrl(context: Context): String =
+        sp(context).getString(KEY_PAIRING_BASE_URL, PairingEndpoint.DEFAULT_BASE_URL)
+            ?: PairingEndpoint.DEFAULT_BASE_URL
+
+    fun setPairingBaseUrl(context: Context, value: String) {
+        sp(context).edit().putString(KEY_PAIRING_BASE_URL, value).apply()
+    }
+
+    fun pairedDeviceName(context: Context): String? =
+        sp(context).getString(KEY_PAIRED_DEVICE_NAME, null)
+
+    fun setPairedDeviceName(context: Context, value: String) {
+        sp(context).edit().putString(KEY_PAIRED_DEVICE_NAME, value).apply()
     }
 }
