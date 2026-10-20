@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.telephony.SubscriptionInfo
 import android.telephony.SubscriptionManager
+import android.os.Build
 import androidx.core.content.ContextCompat
 import java.security.MessageDigest
 import java.util.Locale
@@ -21,14 +22,24 @@ import java.util.concurrent.Executor
 class SimChangeMonitor(context: Context) {
     private val appContext = context.applicationContext
     private val subscriptionManager = appContext.getSystemService(SubscriptionManager::class.java)
-    private val executor: Executor = appContext.mainExecutor
+    private val executor: Executor = ContextCompat.getMainExecutor(appContext)
     private var listener: SubscriptionManager.OnSubscriptionsChangedListener? = null
 
     fun start() {
-        if (!hasPhoneStatePermission() || subscriptionManager == null || listener != null) return
-        listener = object : SubscriptionManager.OnSubscriptionsChangedListener() {
+        val manager = subscriptionManager ?: return
+        if (!hasPhoneStatePermission() || listener != null) return
+        val newListener = object : SubscriptionManager.OnSubscriptionsChangedListener() {
             override fun onSubscriptionsChanged() = handleSubscriptionsChanged()
-        }.also { subscriptionManager.addOnSubscriptionsChangedListener(executor, it) }
+        }
+        // The Executor overload only exists from API 30; on older releases the callback is
+        // delivered on the main thread by the platform, which is what this class relies on.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            manager.addOnSubscriptionsChangedListener(executor, newListener)
+        } else {
+            @Suppress("DEPRECATION")
+            manager.addOnSubscriptionsChangedListener(newListener)
+        }
+        listener = newListener
     }
 
     fun stop() {
@@ -103,8 +114,16 @@ class SimChangeMonitor(context: Context) {
         // ICCID is used only locally as a one-way fingerprint. Android may withhold it on newer
         // releases; the carrier and network code then remain a useful, less precise fallback.
         val carrier = info.carrierName?.toString()?.trim().orEmpty().ifBlank { "Unknown carrier" }
-        val network = listOfNotNull(info.mccString?.takeIf { it.isNotBlank() }, info.mncString?.takeIf { it.isNotBlank() })
-            .joinToString("/")
+        // mccString/mncString were added in API 29. On older releases the network code part is
+        // simply omitted; the carrier name still identifies the card.
+        val network = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            listOfNotNull(
+                info.mccString?.takeIf { it.isNotBlank() },
+                info.mncString?.takeIf { it.isNotBlank() }
+            ).joinToString("/")
+        } else {
+            ""
+        }
         val identity = info.iccId?.takeIf { it.isNotBlank() }
             ?: listOf(carrier, network, info.displayName?.toString().orEmpty()).joinToString("|")
         val label = if (network.isBlank()) carrier else "$carrier ($network)"
