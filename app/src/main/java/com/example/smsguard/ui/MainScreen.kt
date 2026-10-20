@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -40,6 +41,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import com.example.smsguard.PermissionState
 import com.example.smsguard.Prefs
+import com.example.smsguard.R
 import com.example.smsguard.SirenController
 import com.example.smsguard.AccessibilityPermission
 import com.example.smsguard.ProtectionService
@@ -59,7 +61,11 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 private const val SIREN_POLL_INTERVAL_MS = 1000L
 
 @Composable
-fun MainScreen(onThemeChange: (Int) -> Unit) {
+fun MainScreen(
+    onThemeChange: (Int) -> Unit,
+    incomingPairingToken: String? = null,
+    onIncomingPairingTokenConsumed: () -> Unit = {}
+) {
     val context = LocalContext.current
     val navController = rememberNavController()
     
@@ -90,6 +96,16 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
             PermissionState.allPermissions
         )
         permissionTrigger++
+    }
+
+    // A smsguard://pair?token=... link hands us a raw token. Keep it until the pairing screen
+    // consumes it, and jump straight to that screen so the link actually does something.
+    var pendingPairingToken by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(incomingPairingToken) {
+        if (incomingPairingToken.isNullOrBlank()) return@LaunchedEffect
+        pendingPairingToken = incomingPairingToken
+        onIncomingPairingTokenConsumed()
+        navController.navigate(Screen.Pair.route) { launchSingleTop = true }
     }
 
     // The dashboard reports a red "System Issue" from this same stale-snapshot pattern; a grant
@@ -220,7 +236,10 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
                 ContactsScreen()
             }
             composable(Screen.Pair.route) {
-                PairScreen()
+                PairScreen(
+                    initialToken = pendingPairingToken,
+                    onInitialTokenConsumed = { pendingPairingToken = null }
+                )
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(
@@ -272,6 +291,7 @@ fun MainScreen(onThemeChange: (Int) -> Unit) {
 @Composable
 internal fun ScreenLockPermissionDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
+    val appName = stringResource(R.string.app_name)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("🔒 Enable Screen Lock Permission") },
@@ -283,7 +303,7 @@ internal fun ScreenLockPermissionDialog(onDismiss: () -> Unit) {
                     "What to do next:\n" +
                     "1. Tap Go to Settings.\n" +
                     "2. Tap Downloaded Apps or Installed Services.\n" +
-                    "3. Select ${context.getString(com.example.smsguard.R.string.app_name)}.\n" +
+                    "3. Select $appName.\n" +
                     "4. Turn the toggle on."
             )
         },

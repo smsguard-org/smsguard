@@ -40,12 +40,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,7 +74,6 @@ import com.example.smsguard.PairingQr
 import com.example.smsguard.PairingQrParser
 import com.example.smsguard.PermissionState
 import com.example.smsguard.Prefs
-import com.example.smsguard.ui.components.SectionCard
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -105,16 +104,17 @@ private sealed interface PairStep {
  * withholds it, in which case the user is asked to type the value shown by `*#06#`.
  */
 @Composable
-fun PairScreen(modifier: Modifier = Modifier) {
+fun PairScreen(
+    initialToken: String? = null,
+    onInitialTokenConsumed: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var baseUrl by remember { mutableStateOf(Prefs.pairingBaseUrl(context)) }
-    var baseUrlError by remember { mutableStateOf<String?>(null) }
     var step by remember { mutableStateOf<PairStep>(PairStep.Idle) }
     var invalidQrMessage by remember { mutableStateOf<String?>(null) }
     var manualImei by remember { mutableStateOf("") }
     var manualImeiError by remember { mutableStateOf<String?>(null) }
-    var serverNotice by remember { mutableStateOf<String?>(null) }
     var claimJob by remember { mutableStateOf<Job?>(null) }
 
     fun claim(device: PairingDevice, imei: String, qr: PairingQr, server: String) {
@@ -177,26 +177,35 @@ fun PairScreen(modifier: Modifier = Modifier) {
             return false
         }
 
-        val qrOrigin = qr.origin?.let { PairingEndpoint.normalizeBaseUrl(it) }
-        val server = PairingEndpoint.normalizeBaseUrl(baseUrl) ?: run {
-            step = PairStep.Failed(
-                "The dashboard address is not valid. Use http://10.0.2.2:3000 on the " +
-                    "emulator or your computer's LAN IP on a real phone — not localhost."
-            )
+        // The scanned QR is the source of truth: post straight to the address it encodes, even
+        // when that is localhost (an adb reverse tunnel or local proxy is a valid setup). Only a
+        // deep-link QR without an address falls back to the saved default.
+        val server = PairingEndpoint.normalizeBaseUrl(
+            qr.origin ?: Prefs.pairingBaseUrl(context)
+        ) ?: run {
+            step = PairStep.Failed("The QR code does not contain a usable server address.")
             return true
         }
-
-        // The configured address stays the trust anchor. A QR can originate anywhere, and the
-        // claim contains the IMEI and other identifiers, so it must never silently redirect them.
-        serverNotice = if (qrOrigin != null && qrOrigin != server) {
-            "This QR points to $qrOrigin. Pairing uses the configured address $server."
-        } else {
-            null
-        }
+        if (qr.origin != null) Prefs.setPairingBaseUrl(context, server)
 
         invalidQrMessage = null
         collectAndContinue(qr, server)
         return true
+    }
+
+    /** Handles a token that arrived through a `smsguard://pair?token=...` deep link. */
+    fun handleToken(token: String) {
+        if (!PairingQrParser.isPlausibleToken(token)) {
+            step = PairStep.Failed("That pairing link is not valid. Scan the QR code instead.")
+            return
+        }
+        // A bare smsguard:// link carries no server address, so reuse the last dashboard address
+        // this phone paired with (the emulator default on a fresh install).
+        val server = PairingEndpoint.normalizeBaseUrl(Prefs.pairingBaseUrl(context)) ?: run {
+            step = PairStep.Failed("No dashboard address is configured. Scan the QR code instead.")
+            return
+        }
+        collectAndContinue(PairingQr(token = token), server)
     }
 
     val permissionsLauncher = rememberLauncherForActivityResult(
@@ -234,17 +243,6 @@ fun PairScreen(modifier: Modifier = Modifier) {
     }
 
     fun startScan() {
-        val normalized = PairingEndpoint.normalizeBaseUrl(baseUrl)
-        if (normalized == null) {
-            baseUrlError =
-                "Enter a reachable http(s) address. localhost and 127.0.0.1 point at this phone."
-            return
-        }
-        baseUrl = normalized
-        baseUrlError = null
-        serverNotice = null
-        Prefs.setPairingBaseUrl(context, normalized)
-
         val missing = buildList {
             if (!PermissionState.isGranted(context, Manifest.permission.CAMERA)) {
                 add(Manifest.permission.CAMERA)
@@ -271,14 +269,17 @@ fun PairScreen(modifier: Modifier = Modifier) {
         onDispose { claimJob?.cancel() }
     }
 
+    // A token handed over by a deep link is claimed immediately; the screen still shows the
+    // usual claiming/IMEI/success steps from there.
+    LaunchedEffect(initialToken) {
+        if (!initialToken.isNullOrBlank()) {
+            onInitialTokenConsumed()
+            handleToken(initialToken)
+        }
+    }
+
     when (val current = step) {
         PairStep.Idle -> IdleContent(
-            baseUrl = baseUrl,
-            baseUrlError = baseUrlError,
-            onBaseUrlChange = {
-                baseUrl = it
-                baseUrlError = null
-            },
             onScan = ::startScan,
             modifier = modifier
         )
@@ -312,7 +313,6 @@ fun PairScreen(modifier: Modifier = Modifier) {
         )
         is PairStep.Claiming -> ClaimingContent(
             message = current.message,
-            serverNotice = serverNotice,
             onCancel = ::cancelClaim,
             modifier = modifier
         )
@@ -321,7 +321,6 @@ fun PairScreen(modifier: Modifier = Modifier) {
             onPairAnother = {
                 manualImei = ""
                 manualImeiError = null
-                serverNotice = null
                 step = PairStep.Idle
             },
             modifier = modifier
@@ -330,7 +329,6 @@ fun PairScreen(modifier: Modifier = Modifier) {
             message = current.message,
             offerAppSettings = current.offerAppSettings,
             onRescan = ::startScan,
-            onEditServer = { step = PairStep.Idle },
             modifier = modifier
         )
     }
@@ -338,9 +336,6 @@ fun PairScreen(modifier: Modifier = Modifier) {
 
 @Composable
 private fun IdleContent(
-    baseUrl: String,
-    baseUrlError: String?,
-    onBaseUrlChange: (String) -> Unit,
     onScan: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -349,87 +344,31 @@ private fun IdleContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.QrCodeScanner,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(24.dp)
             )
-            Column {
-                Text(
-                    text = "Pair with dashboard",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = "Scan the QR code shown by the SMSGuard dashboard.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Text(
+                text = "Pair device",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
 
-        SectionCard {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "Dashboard server",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                TextField(
-                    value = baseUrl,
-                    onValueChange = onBaseUrlChange,
-                    label = { Text("Server address") },
-                    placeholder = { Text(PairingEndpoint.DEFAULT_BASE_URL) },
-                    singleLine = true,
-                    isError = baseUrlError != null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                    supportingText = {
-                        Text(
-                            baseUrlError
-                                ?: "Emulator: http://10.0.2.2:3000 · Real phone: your PC's LAN IP, " +
-                                "e.g. http://192.168.1.20:3000. Never use localhost."
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Text(
-                    text = "The address is saved on this phone. A QR code that contains a " +
-                        "reachable server address updates it automatically.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        SectionCard {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "What pairing sends",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                PairingBullet(
-                    "Camera access reads the QR code; phone access lets the app try to read " +
-                        "the IMEI automatically."
-                )
-                PairingBullet(
-                    "Android 10+ may hide the IMEI from regular apps. If that happens, SMSGuard " +
-                        "asks you for the value instead of sending a fake one."
-                )
-                PairingBullet(
-                    "Battery, carrier and network state are included. Location is included only " +
-                        "when location permission is already granted."
-                )
-            }
-        }
+        Text(
+            text = "Scan the QR code shown on the dashboard.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         Button(
             onClick = onScan,
@@ -438,30 +377,11 @@ private fun IdleContent(
             Icon(
                 imageVector = Icons.Default.QrCodeScanner,
                 contentDescription = null,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(18.dp)
             )
             Spacer(Modifier.size(8.dp))
             Text("Scan QR code")
         }
-
-        Text(
-            text = "Tip: the dashboard QR must point at your computer, not at localhost. Set " +
-                "NEXT_PUBLIC_APP_URL=http://<your-pc-lan-ip>:3000 and restart Next.js if needed.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun PairingBullet(text: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("•", color = MaterialTheme.colorScheme.primary)
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -485,47 +405,36 @@ private fun ScannerContent(
 
         Box(
             modifier = Modifier
-                .size(250.dp)
+                .size(220.dp)
                 .align(Alignment.Center)
-                .border(3.dp, Color.White, RoundedCornerShape(24.dp))
+                .border(3.dp, Color.White, RoundedCornerShape(20.dp))
         )
 
-        Column(
+        Text(
+            text = "Scan pairing QR",
+            color = Color.White,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(16.dp)
-                .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = "Scan pairing QR",
-                color = Color.White,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Point the camera at the code in the dashboard.",
-                color = Color.White.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center
-            )
-        }
+                .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(50))
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        )
 
         if (invalidMessage != null) {
             Card(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(start = 24.dp, end = 24.dp, bottom = 104.dp),
+                    .padding(start = 24.dp, end = 24.dp, bottom = 88.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer
                 )
             ) {
                 Text(
                     text = invalidMessage,
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
@@ -535,7 +444,7 @@ private fun ScannerContent(
             onClick = onCancel,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 32.dp),
+                .padding(bottom = 24.dp),
             colors = ButtonDefaults.textButtonColors(contentColor = Color.White)
         ) {
             Text("Cancel")
@@ -555,64 +464,56 @@ private fun NeedsImeiContent(
     modifier: Modifier = Modifier
 ) {
     val valid = PairingDeviceInfo.isValidImei(imei)
+    val hint = error ?: if (imei.isNotEmpty() && !valid) "Enter 14–17 digits" else null
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.PhoneAndroid,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(24.dp)
             )
             Text(
                 text = "IMEI needed",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
         }
 
-        SectionCard {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "Android 10 and newer only share the IMEI with carrier or system apps, " +
-                        "so SMSGuard could not read it automatically.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Text(
-                    text = "Dial *#06# on this phone to display it, then enter it below. The app " +
-                        "sends exactly what you type — it never invents a value.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                TextField(
-                    value = imei,
-                    onValueChange = onImeiChange,
-                    label = { Text("IMEI") },
-                    placeholder = { Text("14–17 digits") },
-                    singleLine = true,
-                    isError = error != null || (imei.isNotEmpty() && !valid),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    supportingText = {
-                        Text(
-                            error ?: if (imei.isNotEmpty() && !valid) {
-                                "The IMEI must be 14 to 17 digits."
-                            } else {
-                                "${imei.length}/17 digits"
-                            }
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+        Text(
+            text = "Android hid it. Dial *#06# and enter the value below.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        OutlinedTextField(
+            value = imei,
+            onValueChange = onImeiChange,
+            label = { Text("IMEI") },
+            placeholder = { Text("14–17 digits") },
+            singleLine = true,
+            isError = error != null || (imei.isNotEmpty() && !valid),
+            textStyle = MaterialTheme.typography.bodySmall,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        if (hint != null) {
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error
+            )
         }
 
         Button(
@@ -620,15 +521,15 @@ private fun NeedsImeiContent(
             enabled = valid,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Pair this device")
+            Text("Pair")
         }
 
         if (!hasPhonePermission) {
-            OutlinedButton(
+            TextButton(
                 onClick = onGrantPhone,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Grant phone access and retry automatically")
+                Text("Grant phone access")
             }
         }
 
@@ -639,10 +540,10 @@ private fun NeedsImeiContent(
             Icon(
                 imageVector = Icons.Default.Refresh,
                 contentDescription = null,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(16.dp)
             )
             Spacer(Modifier.size(6.dp))
-            Text("Scan a different code")
+            Text("Scan again")
         }
     }
 }
@@ -650,7 +551,6 @@ private fun NeedsImeiContent(
 @Composable
 private fun ClaimingContent(
     message: String,
-    serverNotice: String?,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -661,31 +561,15 @@ private fun ClaimingContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        CircularProgressIndicator()
-        Spacer(Modifier.height(24.dp))
+        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+        Spacer(Modifier.height(16.dp))
         Text(
             text = message,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "Keep this screen open while the dashboard registers this phone.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        if (serverNotice != null) {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = serverNotice,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-        }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
         TextButton(onClick = onCancel) {
             Text("Cancel")
         }
@@ -710,35 +594,28 @@ private fun SuccessContent(
             imageVector = Icons.Default.CheckCircle,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(88.dp)
+            modifier = Modifier.size(64.dp)
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
         Text(
-            text = "Device paired",
-            style = MaterialTheme.typography.headlineMedium,
+            text = "Paired",
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             text = deviceName,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = "The dashboard can now see this device.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(24.dp))
         Button(
             onClick = onPairAnother,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Pair another device")
+            Text("Pair another")
         }
     }
 }
@@ -748,7 +625,6 @@ private fun FailedContent(
     message: String,
     offerAppSettings: Boolean,
     onRescan: () -> Unit,
-    onEditServer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -764,23 +640,23 @@ private fun FailedContent(
             imageVector = Icons.Default.ErrorOutline,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(72.dp)
+            modifier = Modifier.size(56.dp)
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(12.dp))
         Text(
-            text = "Pairing didn't complete",
-            style = MaterialTheme.typography.headlineSmall,
+            text = "Pairing failed",
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
         Button(
             onClick = onRescan,
             modifier = Modifier.fillMaxWidth()
@@ -792,13 +668,6 @@ private fun FailedContent(
             )
             Spacer(Modifier.size(8.dp))
             Text("Scan again")
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = onEditServer,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Change server address")
         }
         if (offerAppSettings) {
             TextButton(
@@ -812,10 +681,10 @@ private fun FailedContent(
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(16.dp)
                 )
                 Spacer(Modifier.size(6.dp))
-                Text("Open app settings")
+                Text("App settings")
             }
         }
     }

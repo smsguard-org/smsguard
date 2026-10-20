@@ -81,16 +81,16 @@ object PairingQrParser {
         runCatching { URLDecoder.decode(value, Charsets.UTF_8.name()) }.getOrNull()
 }
 
-/** Builds and validates dashboard URLs. Localhost is always rejected: it points at the phone. */
+/** Builds and validates dashboard URLs. */
 object PairingEndpoint {
     const val DEFAULT_BASE_URL = "http://10.0.2.2:3000"
 
     /**
-     * Normalizes a user-entered base URL and rejects values that cannot work.
+     * Normalizes a user-entered base URL.
      *
-     * `10.0.2.2` is the emulator's alias for the host machine and is intentionally allowed, while
-     * `localhost`, loopback addresses and wildcard binds are not, because they resolve to the phone
-     * itself rather than to the computer running the dashboard.
+     * Any host is accepted, including loopback: the dashboard may legitimately be reached through
+     * an adb reverse tunnel or a local proxy, and the QR code the user scanned is the source of
+     * truth for where the claim goes.
      */
     fun normalizeBaseUrl(input: String?): String? {
         val trimmed = input?.trim().orEmpty()
@@ -99,21 +99,11 @@ object PairingEndpoint {
         val scheme = uri.scheme?.lowercase() ?: return null
         if (scheme != "http" && scheme != "https") return null
         val host = uri.host?.takeIf { it.isNotBlank() } ?: return null
-        if (isLoopbackHost(host)) return null
         if (uri.rawQuery != null || uri.fragment != null) return null
 
         val port = if (uri.port in 1..65535) ":${uri.port}" else ""
         val path = uri.path.orEmpty().trimEnd('/')
         return "$scheme://$host$port$path"
-    }
-
-    fun isLoopbackHost(host: String): Boolean {
-        val normalized = host.lowercase().removeSurrounding("[", "]")
-        return normalized == "localhost" ||
-            normalized == "0.0.0.0" ||
-            normalized == "::1" ||
-            normalized == "::" ||
-            normalized.startsWith("127.")
     }
 
     fun pairingUrl(baseUrl: String, token: String): String =

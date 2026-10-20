@@ -17,11 +17,11 @@ class PairingQrTest {
     }
 
     @Test
-    fun parse_localhostLinkKeepsLoopbackOriginForTheUiToReject() {
+    fun parse_localhostLinkKeepsLoopbackOriginSoItCanBeUsedDirectly() {
         val qr = PairingQrParser.parse("http://localhost:3000/link/token-1")
         assertEquals("token-1", qr?.token)
         assertEquals("http://localhost:3000", qr?.origin)
-        assertNull(PairingEndpoint.normalizeBaseUrl(qr?.origin))
+        assertEquals("http://localhost:3000", PairingEndpoint.normalizeBaseUrl(qr?.origin))
     }
 
     @Test
@@ -91,12 +91,19 @@ class PairingQrTest {
     }
 
     @Test
-    fun normalizeBaseUrl_rejectsLoopbackAndBadSchemes() {
-        assertNull(PairingEndpoint.normalizeBaseUrl("http://localhost:3000"))
-        assertNull(PairingEndpoint.normalizeBaseUrl("http://127.0.0.1:3000"))
-        assertNull(PairingEndpoint.normalizeBaseUrl("http://127.1.2.3:3000"))
-        assertNull(PairingEndpoint.normalizeBaseUrl("http://[::1]:3000"))
-        assertNull(PairingEndpoint.normalizeBaseUrl("http://0.0.0.0:3000"))
+    fun normalizeBaseUrl_acceptsLoopbackAndRejectsBadSchemes() {
+        assertEquals(
+            "http://localhost:3000",
+            PairingEndpoint.normalizeBaseUrl("http://localhost:3000")
+        )
+        assertEquals(
+            "http://127.0.0.1:3000",
+            PairingEndpoint.normalizeBaseUrl("http://127.0.0.1:3000")
+        )
+        assertEquals(
+            "http://[::1]:3000",
+            PairingEndpoint.normalizeBaseUrl("http://[::1]:3000")
+        )
         assertNull(PairingEndpoint.normalizeBaseUrl("ftp://10.0.2.2:3000"))
         assertNull(PairingEndpoint.normalizeBaseUrl(""))
     }
@@ -104,14 +111,6 @@ class PairingQrTest {
     @Test
     fun normalizeBaseUrl_rejectsQueryStrings() {
         assertNull(PairingEndpoint.normalizeBaseUrl("http://10.0.2.2:3000?debug=1"))
-    }
-
-    @Test
-    fun isLoopbackHost_recognizesOnlyThisPhone() {
-        assertTrue(PairingEndpoint.isLoopbackHost("localhost"))
-        assertTrue(PairingEndpoint.isLoopbackHost("127.0.0.1"))
-        assertFalse(PairingEndpoint.isLoopbackHost("10.0.2.2"))
-        assertFalse(PairingEndpoint.isLoopbackHost("192.168.1.20"))
     }
 
     @Test
