@@ -69,6 +69,7 @@ import com.example.smsguard.R
 import com.example.smsguard.ui.components.SectionCard
 import com.example.smsguard.ui.components.SectionHeader
 import kotlinx.coroutines.delay
+import androidx.compose.ui.graphics.luminance
 
 @Composable
 fun DashboardScreen(
@@ -107,7 +108,12 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.app_logo),
+                    painter = painterResource(
+                        id = if (MaterialTheme.colorScheme.background.luminance() < 0.5f)
+                            R.drawable.smsguard_logo_dark
+                        else
+                            R.drawable.smsguard_logo_light
+                    ),
                     contentDescription = null,
                     modifier = Modifier
                         .size(64.dp)

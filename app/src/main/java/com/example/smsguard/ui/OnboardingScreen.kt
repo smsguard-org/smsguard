@@ -81,6 +81,7 @@ import com.example.smsguard.R
 import com.example.smsguard.SmsGuardCommand
 import com.example.smsguard.TrustedContact
 import com.example.smsguard.ui.components.rememberContactImporter
+import androidx.compose.ui.graphics.luminance
 
 private const val WELCOME_STEP = 0
 private const val PERMISSIONS_STEP = 1
@@ -378,7 +379,12 @@ private fun WelcomeStep() {
         verticalArrangement = Arrangement.Center
     ) {
         Image(
-            painter = painterResource(id = R.drawable.app_logo),
+            painter = painterResource(
+                id = if (MaterialTheme.colorScheme.background.luminance() < 0.5f)
+                    R.drawable.smsguard_logo_dark
+                else
+                    R.drawable.smsguard_logo_light
+            ),
             contentDescription = null,
             modifier = Modifier
                 .size(120.dp)
