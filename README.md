@@ -38,3 +38,31 @@ All commands use the format `#COMMAND#PIN`, where PIN is the owner's security PI
 | `#WIPE#PIN` | Raises an emergency wipe alert and locks the device for safety.* |
 
 *\*Note: `#WIPE` raises an alert and locks the device; it does not erase user data.*
+## 🔒 Security Design
+* **PIN Authentication:** Every command requires the correct PIN to prevent unauthorized control.
+* **Master Switch:** SMS commands can be toggled on or off from inside the app.
+* **Siren Override:** The alarm plays at maximum volume even in silent/DND mode.
+* **Remote Lock:** Uses an Android accessibility service (explicitly enabled by the user) to lock the screen.
+* **SIM Change Detection:** Detects SIM replacement while protection is active (SIM identifiers are never sent via SMS).
+* **Least Privilege & Transparency:** A dashboard shows what permissions are granted, denied, or blocked.
+* **Offline by Design:** No cloud service means no account database to breach and no data connection to cut.
+
+## 🌐 The Companion Website
+A front-end demonstration website supports the app (data is stored in the browser, not a server).
+* **Home:** Introduces SMSGuard and its features.
+* **Lost & Found:** Allows users to report a device as lost using its IMEI and check the status of an IMEI.
+* **Dashboard:** Shows counts of registered, lost, and recovered devices.
+* **Guide:** Step-by-step instructions for installation and usage.
+
+**Live Demo:** [View the SMSGuard Web Demo](https://claude.ai/artifact/TXavChbnS1EMURjMgTk4V)
+
+## 🛠️ Technology Stack
+| Area | Details |
+| :--- | :--- |
+| **Platform** | Android, written in Kotlin |
+| **UI** | Jetpack Compose with Material theming (light/dark mode) |
+| **Messaging** | Android SMS APIs |
+| **Location** | Device GPS shared as a Google Maps link |
+| **Device Control** | Audio override (siren), camera flash, accessibility service (locking) |
+| **Build & Versioning** | Gradle, Git, and GitHub with tagged releases |
+| **Website** | Single-page HTML, CSS, and JavaScript |
