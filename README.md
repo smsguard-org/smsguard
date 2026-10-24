@@ -66,3 +66,26 @@ A front-end demonstration website supports the app (data is stored in the browse
 | **Device Control** | Audio override (siren), camera flash, accessibility service (locking) |
 | **Build & Versioning** | Gradle, Git, and GitHub with tagged releases |
 | **Website** | Single-page HTML, CSS, and JavaScript |
+## 🧪 Testing
+* **Functional Testing:** Conducted on the Android Studio emulator (simulated incoming SMS and mock GPS).
+* **Compatibility Testing:** Targeted at Tecno and Samsung phones (widely used locally).
+* **UI Checks:** Verified logo and screen rendering in both light and dark themes.
+
+## ⚠️ Limitations
+* **SMS Security:** SMS is not encrypted end-to-end, so the PIN is sent in clear text over carrier networks.
+* **Network Dependency:** Requires a working SIM and SMS credit for replies.
+* **GPS Accuracy:** Poor indoors. Some phone brands aggressively kill background apps, delaying command handling unless battery optimization is turned off.
+* **Hardware Limits:** A thief who removes the SIM or powers off the phone can stop the app from receiving commands.
+
+## 🚀 Future Work
+* **Replay Protection & Rate Limiting:** One-time tokens and limits on PIN attempts to stop brute-force guessing.
+* **Trusted-Number Whitelist:** Only allow approved senders to issue commands.
+* **Tamper-Resistant Logging:** Local logs of every command received.
+* **Fake Shutdown Screen:** Keeps the phone running and reporting if a thief tries to power it off.
+* **Backend Integration:** Connect the website to a real backend with user login to trigger locate requests.
+
+## 👥 The Team
+SMSGuard is built by a team of six, organized in three pairs:
+* **Developers & AI Promoters (2):** Implement the Android app and the website.
+* **Feature & Security Logic Leads (2):** Design command handling, authentication, and anti-tamper behavior.
+* **UI & Documentation Leads (2):** Design the interface and write project documentation.
