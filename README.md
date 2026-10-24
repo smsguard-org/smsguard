@@ -1,41 +1,91 @@
 # SMSGuard
 
-Android app that turns any phone into a remotely controllable safety device via SMS commands.
+SMSGuard is an Android app that lets an owner find, alarm, and lock a lost or stolen phone by sending it a plain text message. It works entirely without an internet connection—the phone only needs a SIM card, network signal, and the app installed. A companion website adds a lost-and-found lookup by IMEI and a setup guide.
 
-`#LOCATE#PIN#`: reply with the device's current GPS location
+## 📱 The Problem
+Phone theft and loss are common, and usual recovery tools depend on conditions a thief can easily break:
+* **They need internet:** Cloud "find my device" services only work with mobile data or Wi-Fi. Thieves can turn data off.
+* **They need accounts:** Many users never configure them or forget their credentials.
+* **They are weak against quick reactions:** Once the phone is switched to silent or offline, the owner has no way to hear it.
 
-`#ALARM#PIN#`: play a siren alarm
+SMS, by contrast, works on nearly every network and phone without a data plan, making it a dependable fallback in regions with patchy connectivity.
 
-`#STOP#PIN#`: stop the siren
+## 💡 The Solution
+The owner installs SMSGuard and sets a secret PIN. If the phone goes missing, the owner sends a command from any phone in the format `#COMMAND#PIN`. The app receives the SMS, verifies the PIN, performs the action, and replies via SMS. No server, account, or internet connection is required.
 
-Commands are authenticated with a user-defined PIN (4–8 digits) set in the app.
+## ⚙️ How It Works
+1. **Setup:** Users grant necessary permissions (SMS, location, phone state, etc.) and set a 4-8 digit security PIN. Devices can also be paired via QR codes and `smsguard://` deep links.
+2. **Command Handling:** Incoming SMS messages are checked for the correct format and PIN. Valid commands execute actions (e.g., locating the device, sounding a siren) and reply to the sender.
+3. **Low-Battery Beacon:** If enabled, the app monitors battery levels and automatically sends the phone's location to a trusted contact before the phone dies.
 
-Only numbers saved in the app's **Trusted Contacts** list may run commands. Contacts can be
-picked from the phone's address book or added manually. A command text from any other number is
-ignored without a reply and recorded in the **Suspicious Numbers** list, along with the number and
-the time it was sent.
+## 📜 SMS Command Reference
+All commands use the format `#COMMAND#PIN`, where PIN is the owner's security PIN.
 
-## Pairing with the dashboard
+| Command | What it does |
+| :--- | :--- |
+| `#LOCATE#PIN` | Replies with the phone's GPS coordinates and a Google Maps link. |
+| `#ALARM#PIN` | Plays a maximum-volume siren, even in silent or Do Not Disturb mode. |
+| `#STOP#PIN` | Stops a running siren. |
+| `#LOCK#PIN` | Remotely locks the device screen. |
+| `#STATUS#PIN` | Full device report: battery, network, Wi-Fi, location, storage, and memory. |
+| `#BATTERY#PIN` | Battery percentage, charging state, and device temperature. |
+| `#DATA#PIN` | Mobile data connection status and active IP. |
+| `#WIFI#PIN` | Wi-Fi status, connected network name, and local address. |
+| `#FLASH#PIN` | Flashes the camera LED for 15 seconds to find the phone in the dark. |
+| `#INFO#PIN` | Device model, Android version, and system uptime. |
+| `#CALLME#PIN` | Triggers an emergency callback alert and notifies the trusted contact. |
+| `#CONTACTS#PIN` | Replies with the configured trusted-contact details. |
+| `#WIPE#PIN` | Raises an emergency wipe alert and locks the device for safety.* |
 
-Open the **Pair** tab, set the dashboard server address, and scan the QR code shown by the
-dashboard. The app accepts both link formats:
+*\*Note: `#WIPE` raises an alert and locks the device; it does not erase user data.*
+## 🔒 Security Design
+* **PIN Authentication:** Every command requires the correct PIN to prevent unauthorized control.
+* **Master Switch:** SMS commands can be toggled on or off from inside the app.
+* **Siren Override:** The alarm plays at maximum volume even in silent/DND mode.
+* **Remote Lock:** Uses an Android accessibility service (explicitly enabled by the user) to lock the screen.
+* **SIM Change Detection:** Detects SIM replacement while protection is active (SIM identifiers are never sent via SMS).
+* **Least Privilege & Transparency:** A dashboard shows what permissions are granted, denied, or blocked.
+* **Offline by Design:** No cloud service means no account database to breach and no data connection to cut.
 
-- `http://<server>:3000/link/<token>`
-- `smsguard://pair?token=<token>`
+## 🌐 The Companion Website
+A front-end demonstration website supports the app (data is stored in the browser, not a server).
+* **Home:** Introduces SMSGuard and its features.
+* **Lost & Found:** Allows users to report a device as lost using its IMEI and check the status of an IMEI.
+* **Dashboard:** Shows counts of registered, lost, and recovered devices.
+* **Guide:** Step-by-step instructions for installation and usage.
 
-Use `http://10.0.2.2:3000` on the Android emulator. On a real phone, use the computer's LAN
-address (for example `http://192.168.1.20:3000`). `localhost` and `127.0.0.1` point at the phone
-itself and are rejected.
+**Live Demo:** [View the SMSGuard Web Demo](https://claude.ai/artifact/TXavChbnS1EMURjMgTk4V)
 
-The app POSTs the device report to `/api/devices/pairings/<token>/claim`. Android 10+ often hides
-the IMEI from regular apps; when that happens the app asks you to enter the value shown by
-`*#06#` instead of submitting a made-up number. If the dashboard QR still contains a `localhost`
-URL, set `NEXT_PUBLIC_APP_URL=http://<your-pc-lan-ip>:3000` in `.env.local` and restart
-`next dev`.
+## 🛠️ Technology Stack
+| Area | Details |
+| :--- | :--- |
+| **Platform** | Android, written in Kotlin |
+| **UI** | Jetpack Compose with Material theming (light/dark mode) |
+| **Messaging** | Android SMS APIs |
+| **Location** | Device GPS shared as a Google Maps link |
+| **Device Control** | Audio override (siren), camera flash, accessibility service (locking) |
+| **Build & Versioning** | Gradle, Git, and GitHub with tagged releases |
+| **Website** | Single-page HTML, CSS, and JavaScript |
+## 🧪 Testing
+* **Functional Testing:** Conducted on the Android Studio emulator (simulated incoming SMS and mock GPS).
+* **Compatibility Testing:** Targeted at Tecno and Samsung phones (widely used locally).
+* **UI Checks:** Verified logo and screen rendering in both light and dark themes.
 
-APK files are available at the releases section.
-Creating an issue or PR is very welcome. 
+## ⚠️ Limitations
+* **SMS Security:** SMS is not encrypted end-to-end, so the PIN is sent in clear text over carrier networks.
+* **Network Dependency:** Requires a working SIM and SMS credit for replies.
+* **GPS Accuracy:** Poor indoors. Some phone brands aggressively kill background apps, delaying command handling unless battery optimization is turned off.
+* **Hardware Limits:** A thief who removes the SIM or powers off the phone can stop the app from receiving commands.
 
-## License
+## 🚀 Future Work
+* **Replay Protection & Rate Limiting:** One-time tokens and limits on PIN attempts to stop brute-force guessing.
+* **Trusted-Number Whitelist:** Only allow approved senders to issue commands.
+* **Tamper-Resistant Logging:** Local logs of every command received.
+* **Fake Shutdown Screen:** Keeps the phone running and reporting if a thief tries to power it off.
+* **Backend Integration:** Connect the website to a real backend with user login to trigger locate requests.
 
-MIT — see [LICENSE](LICENSE).
+## 👥 The Team
+SMSGuard is built by a team of six, organized in three pairs:
+* **Developers & AI Promoters (2):** Implement the Android app and the website.
+* **Feature & Security Logic Leads (2):** Design command handling, authentication, and anti-tamper behavior.
+* **UI & Documentation Leads (2):** Design the interface and write project documentation.
