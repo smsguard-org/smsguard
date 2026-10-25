@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.png" alt="SMSGuard Logo" width="120"/>
+<img src="/icon.png" alt="SMSGuard Logo" width="120"/>
 
 # 🛡️ SMSGuard
 
@@ -31,8 +31,6 @@
 <a href="https://smsguard-web.vercel.app/">
   <img src="https://img.shields.io/badge/🌐_LIVE_DEMO-0070F3?style=for-the-badge&logoColor=white&labelColor=1a1a1a" alt="Live Demo" height="44"/>
 </a>
-
-<br/><br/>
 
 </div>
 
