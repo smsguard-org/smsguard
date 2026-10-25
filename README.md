@@ -81,7 +81,7 @@ A front-end demonstration website supports the app (data is stored in the browse
 | **Location** | Device GPS shared as a Google Maps link |
 | **Device Control** | Audio override (siren), camera flash, accessibility service (locking) |
 | **Build & Versioning** | Gradle, Git, and GitHub with tagged releases |
-| **Website** | Single-page HTML, CSS, and JavaScript |
+| **Website** | Next.js + Better-auth and postgres database [link](https://github.com/smsguard-org/smsguard-web)|
 ## 🧪 Testing
 * **Functional Testing:** Conducted on the Android Studio emulator (simulated incoming SMS and mock GPS).
 * **Compatibility Testing:** Targeted at Tecno and Samsung phones (widely used locally).
