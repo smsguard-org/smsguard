@@ -25,10 +25,9 @@ Here is a glimpse of the SMSGuard interface in action:
 | :---: | :---: |
 | <img src="assets/commands.png" width="250" alt="Commands Screen"/> | <img src="assets/dashboard_dark.png" width="250" alt="Dashboard Dark Mode"/> |
 
-<p align="center">
-  <b>App Settings & Security Configuration</b><br>
-  <img src="assets/settings.png" width="250" alt="Settings Screen"/>
-</p>
+| App Settings & Security Configuration |
+| :---: |
+| <img src="assets/settings.png" width="250" alt="Settings Screen"/> |
 
 ## ⚙️ How It Works
 1. **Setup:** Users grant necessary permissions (SMS, location, phone state, etc.) and set a 4-8 digit security PIN. Devices can also be paired via QR codes and `smsguard://` deep links.
