@@ -35,7 +35,7 @@
 </div>
 
 ## 👥 The Team
-SMSGuard is built by a team of six:
+SMSGuard is built by a team of five:
 * **Yoftahe Abraham**: CTC-136-26
 * **Ephrem Worku**: CTC-4404-26
 * **Eyuel Shimeles**: CTC-1312-26
