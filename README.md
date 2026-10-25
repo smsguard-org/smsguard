@@ -34,6 +34,14 @@
 
 </div>
 
+## 👥 The Team
+SMSGuard is built by a team of six:
+* **Yoftahe Abraham**: CTC-136-26
+* **Ephrem Worku**: CTC-4404-26
+* **Eyuel Shimeles**: CTC-1312-26
+* **Andargachew Getachew**: CTC-396-26
+* **Nahom Yemane**: CTC-1782-26
+
 ## 📱 The Problem
 Phone theft and loss are common, and usual recovery tools depend on conditions a thief can easily break:
 * **They need internet:** Cloud "find my device" services only work with mobile data or Wi-Fi. Thieves can turn data off.
@@ -132,8 +140,5 @@ A front-end demonstration website supports the app (data is stored in the browse
 * **Fake Shutdown Screen:** Keeps the phone running and reporting if a thief tries to power it off.
 * **Backend Integration:** Connect the website to a real backend with user login to trigger locate requests.
 
-## 👥 The Team
-SMSGuard is built by a team of six, organized in three pairs:
-* **Developers & AI Promoters (2):** Implement the Android app and the website.
-* **Feature & Security Logic Leads (2):** Design command handling, authentication, and anti-tamper behavior.
-* **UI & Documentation Leads (2):** Design the interface and write project documentation.
+
+
