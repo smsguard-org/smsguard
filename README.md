@@ -13,6 +13,23 @@ SMS, by contrast, works on nearly every network and phone without a data plan, m
 ## 💡 The Solution
 The owner installs SMSGuard and sets a secret PIN. If the phone goes missing, the owner sends a command from any phone in the format `#COMMAND#PIN`. The app receives the SMS, verifies the PIN, performs the action, and replies via SMS. No server, account, or internet connection is required.
 
+## 📸 App Screenshots
+
+Here is a glimpse of the SMSGuard interface in action:
+
+| Onboarding & Setup | Main Dashboard (Light) |
+| :---: | :---: |
+| <img src="assets/onboarding.png" width="250" alt="Onboarding Screen"/> | <img src="assets/dashboard_light.png" width="250" alt="Dashboard Light Mode"/> |
+
+| SMS Command Controls | Main Dashboard (Dark) |
+| :---: | :---: |
+| <img src="assets/commands.png" width="250" alt="Commands Screen"/> | <img src="assets/dashboard_dark.png" width="250" alt="Dashboard Dark Mode"/> |
+
+<p align="center">
+  <b>App Settings & Security Configuration</b><br>
+  <img src="assets/settings.png" width="250" alt="Settings Screen"/>
+</p>
+
 ## ⚙️ How It Works
 1. **Setup:** Users grant necessary permissions (SMS, location, phone state, etc.) and set a 4-8 digit security PIN. Devices can also be paired via QR codes and `smsguard://` deep links.
 2. **Command Handling:** Incoming SMS messages are checked for the correct format and PIN. Valid commands execute actions (e.g., locating the device, sounding a siren) and reply to the sender.
