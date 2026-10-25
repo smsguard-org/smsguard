@@ -54,7 +54,7 @@ A front-end demonstration website supports the app (data is stored in the browse
 * **Dashboard:** Shows counts of registered, lost, and recovered devices.
 * **Guide:** Step-by-step instructions for installation and usage.
 
-**Live Demo:** [View the SMSGuard Web Demo](https://claude.ai/artifact/TXavChbnS1EMURjMgTk4V)
+**Live Demo:** [View the SMSGuard Web Demo](https://smsguard-web.vercel.app/)
 
 ## 🛠️ Technology Stack
 | Area | Details |
