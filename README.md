@@ -1,6 +1,40 @@
-# SMSGuard
+<div align="center">
 
-SMSGuard is an Android app that lets an owner find, alarm, and lock a lost or stolen phone by sending it a plain text message. It works entirely without an internet connection—the phone only needs a SIM card, network signal, and the app installed. A companion website adds a lost-and-found lookup by IMEI and a setup guide.
+<img src="assets/logo.png" alt="SMSGuard Logo" width="120"/>
+
+# 🛡️ SMSGuard
+
+### Find, alarm, and lock a lost phone with a single text message.
+**No internet. No account. No server. Just a SIM card.**
+
+<br/>
+
+[![Latest Release](https://img.shields.io/github/v/release/smsguard-org/smsguard?style=for-the-badge&logo=github&color=3DDC84&label=Release)](https://github.com/smsguard-org/smsguard/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/smsguard-org/smsguard/total?style=for-the-badge&logo=android&color=3DDC84&label=Downloads)](https://github.com/smsguard-org/smsguard/releases)
+[![Stars](https://img.shields.io/github/stars/smsguard-org/smsguard?style=for-the-badge&logo=github&color=FFD700)](https://github.com/smsguard-org/smsguard/stargazers)
+[![Forks](https://img.shields.io/github/forks/smsguard-org/smsguard?style=for-the-badge&logo=github&color=8957E5)](https://github.com/smsguard-org/smsguard/network/members)
+[![Issues](https://img.shields.io/github/issues/smsguard-org/smsguard?style=for-the-badge&color=E5534B)](https://github.com/smsguard-org/smsguard/issues)
+
+[![License](https://img.shields.io/badge/License-Apache_2.0-D22128?style=flat-square&logo=apache&logoColor=white)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white)](https://github.com/smsguard-org/smsguard/releases/latest)
+[![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack_Compose-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![Last Commit](https://img.shields.io/github/last-commit/smsguard-org/smsguard?style=flat-square&logo=git&logoColor=white)](https://github.com/smsguard-org/smsguard/commits)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/smsguard-org/smsguard/pulls)
+
+<br/>
+
+<a href="https://github.com/smsguard-org/smsguard/releases/latest">
+  <img src="https://img.shields.io/badge/⬇_DOWNLOAD_APK-3DDC84?style=for-the-badge&logoColor=white&labelColor=1a1a1a" alt="Download APK" height="44"/>
+</a>
+&nbsp;
+<a href="https://smsguard-web.vercel.app/">
+  <img src="https://img.shields.io/badge/🌐_LIVE_DEMO-0070F3?style=for-the-badge&logoColor=white&labelColor=1a1a1a" alt="Live Demo" height="44"/>
+</a>
+
+<br/><br/>
+
+</div>
 
 ## 📱 The Problem
 Phone theft and loss are common, and usual recovery tools depend on conditions a thief can easily break:
