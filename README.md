@@ -127,12 +127,6 @@ A front-end demonstration website supports the app.
 * **Compatibility Testing:** Targeted at Tecno and Samsung phones (widely used locally).
 * **UI Checks:** Verified logo and screen rendering in both light and dark themes.
 
-## ⚠️ Limitations
-* **SMS Security:** SMS is not encrypted end-to-end, so the PIN is sent in clear text over carrier networks.
-* **Network Dependency:** Requires a working SIM and SMS credit for replies.
-* **GPS Accuracy:** Poor indoors. Some phone brands aggressively kill background apps, delaying command handling unless battery optimization is turned off.
-* **Hardware Limits:** A thief who removes the SIM or powers off the phone can stop the app from receiving commands.
-
 ## 🚀 Future Work
 * **Replay Protection & Rate Limiting:** One-time tokens and limits on PIN attempts to stop brute-force guessing.
 * **Trusted-Number Whitelist:** Only allow approved senders to issue commands.
