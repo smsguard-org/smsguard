@@ -104,7 +104,7 @@ All commands use the format `#COMMAND#PIN`, where PIN is the owner's security PI
 * **Offline by Design:** No cloud service means no account database to breach and no data connection to cut.
 
 ## 🌐 The Companion Website
-A front-end demonstration website supports the app (data is stored in the browser, not a server).
+A front-end demonstration website supports the app.
 * **Home:** Introduces SMSGuard and its features.
 * **Lost & Found:** Allows users to report a device as lost using its IMEI and check the status of an IMEI.
 * **Dashboard:** Shows counts of registered, lost, and recovered devices.
