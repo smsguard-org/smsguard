@@ -1,3 +1,4 @@
+[SMS_Guard_System_Design.pdf](https://github.com/user-attachments/files/34860972/SMS_Guard_System_Design.pdf)
 <div align="center">
 
 <img src="/icon.png" alt="SMSGuard Logo" width="120"/>
