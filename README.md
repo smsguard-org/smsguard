@@ -40,6 +40,7 @@ Project explanation Video: [link](https://youtu.be/atUM4YxcEs0?si=EAW_LS41FjC6Xk
 ## 👥 The Team
 SMSGuard is built by a team of five:
 * **Yoftahe Abraham**: CTC-136-26
+     * **Contribution video**: [link](https://drive.google.com/file/d/1d62NGL7i3jqQq-kfwnoIJNChd2nZc_y7/view?usp=drivesdk) 
 * **Ephrem Worku**: CTC-4404-26
      * **Contribution video**: [link](https://youtu.be/oKesJuaWems?si=K3uezRU1-U115zX1)
 * **Eyuel Shimeles**: CTC-1312-26
