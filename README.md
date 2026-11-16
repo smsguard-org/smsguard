@@ -41,8 +41,9 @@ Video: [link](https://youtu.be/atUM4YxcEs0?si=EAW_LS41FjC6Xktk)
 SMSGuard is built by a team of five:
 * **Yoftahe Abraham**: CTC-136-26
 * **Ephrem Worku**: CTC-4404-26
+*      * **Contribution video**: [link](https://drive.google.com/file/d/1dfNyQlzpx4U59Tu5jbvSK2IQp9GSTijR/view?usp=drivesdk)   
 * **Eyuel Shimeles**: CTC-1312-26
-     * **Contribution video**: [link](https://drive.google.com/file/d/1dfNyQlzpx4U59Tu5jbvSK2IQp9GSTijR/view?usp=drivesdk)   
+     * **Contribution video**: [link](https://youtu.be/oKesJuaWems?si=K3uezRU1-U115zX1)   
 * **Andargachew Getachew**: CTC-396-26
     * **Contribution video**: [link](https://drive.google.com/drive/folders/108q7o0Uwrb3-1umwzvdk6hCklmayWsB-?usp=drive_link) 
 * **Nahom Yemane**: CTC-1782-26
